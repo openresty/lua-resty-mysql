@@ -232,7 +232,7 @@ function connect(self, opts)
 
     print("server version: ", server_ver)
 
-    self.server_ver = server_ver
+    self._server_ver = server_ver
 
     local thread_id, pos = _from_little_endian(packet, pos, pos + 4 - 1)
 
@@ -246,25 +246,25 @@ function connect(self, opts)
     pos = pos + 9 -- skip filler
 
     -- two lower bytes
-    self.server_capabilities, pos = _from_little_endian(packet, pos, pos + 2 - 1)
+    self._server_capabilities, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
-    print("server capabilities: ", self.server_capabilities)
+    print("server capabilities: ", self._server_capabilities)
 
-    self.server_lang = string.byte(packet, pos)
+    self._server_lang = string.byte(packet, pos)
     pos = pos + 1
 
-    print("server lang: ", self.server_lang)
+    print("server lang: ", self._server_lang)
 
-    self.server_status, pos = _from_little_endian(packet, pos, pos + 2 - 1)
+    self._server_status, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
-    print("server status: ", self.server_status)
+    print("server status: ", self._server_status)
 
     local more_capabilities
     more_capabilities, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
-    self.server_capabilities = bit.bor(self.server_capabilities, bit.lshift(more_capabilities, 16))
+    self._server_capabilities = bit.bor(self._server_capabilities, bit.lshift(more_capabilities, 16))
 
-    print("server capabilities: ", self.server_capabilities)
+    print("server capabilities: ", self._server_capabilities)
 
     local len = string.byte(packet, pos)
     len = len - 8 - 1
@@ -285,7 +285,7 @@ function connect(self, opts)
 
     local token = _eval_token(password, scramble)
 
-    -- local client_flags = self.server_capabilities
+    -- local client_flags = self._server_capabilities
     local client_flags = 260047;
 
     print("token: ", _dump(token))
@@ -358,7 +358,7 @@ end
 
 
 function server_ver(self)
-    return self.server_ver
+    return self._server_ver
 end
 
 

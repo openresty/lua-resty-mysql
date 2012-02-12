@@ -114,7 +114,7 @@ failed to connect: failed to connect: host-not-found could not be resolved (3: H
                 return
             end
 
-            ngx.say("connected to mysql ", db.server_ver)
+            ngx.say("connected to mysql ", db:server_ver())
 
             db:close()
         ';
