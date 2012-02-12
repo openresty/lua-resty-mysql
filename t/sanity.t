@@ -1,0 +1,58 @@
+# vim:set ft= ts=4 sw=4 et:
+
+use Test::Nginx::Socket;
+use Cwd qw(cwd);
+
+repeat_each(2);
+
+plan tests => repeat_each() * (3 * blocks() - 1);
+
+my $pwd = cwd();
+
+our $HttpConfig = qq{
+    lua_package_path "$pwd/lib/?.lua;;";
+};
+
+$ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
+$ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
+
+no_long_string();
+
+run_tests();
+
+__DATA__
+
+=== TEST 1: basic
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err = db:connect({
+                host = "127.0.0.1",
+                port = $TEST_NGINX_MYSQL_PORT,
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err)
+                return
+            end
+
+            db:close()
+        ';
+    }
+--- request
+GET /t
+--- response_body
+dog: 32 (flags: 0)
+dog: 32 (flags: 0)
+--- no_error_log
+[error]
+--- ONLY
+
