@@ -20,7 +20,7 @@ local function _from_little_endian(data, i, j)
         if n > 0 then
             res = bit.lshift(res, n * 8)
         end
-        ngx.say("byte: ", string.byte(data, k))
+        print("byte: ", string.byte(data, k))
         res = bit.bor(res, string.byte(data, k))
         n = n + 1
     end
@@ -94,7 +94,7 @@ function _send_packet(self, req, size)
 
     self.packet_no = self.packet_no + 1
 
-    ngx.say("packet no: ", self.packet_no)
+    print("packet no: ", self.packet_no)
 
     local packet = {
         _to_little_endian(size, 3),
@@ -114,19 +114,19 @@ function _recv_packet(self)
         return nil, nil, "failed to receive packet header: " .. err
     end
 
-    ngx.say("packet header: ", _dump(data))
+    print("packet header: ", _dump(data))
 
     local len = _from_little_endian(data, 1, 3)
 
-    ngx.say("packet length: ", len)
+    print("packet length: ", len)
 
     if len == 0 then
-        return "", "empty"
+        return nil, nil, "empty packet"
     end
 
     local num = string.byte(data, 4)
 
-    ngx.say("packet no: ", num)
+    print("packet no: ", num)
 
     self.packet_no = num
 
@@ -135,23 +135,39 @@ function _recv_packet(self)
         return nil, nil, "failed to read packet content: " .. err
     end
 
-    ngx.say("packet content: ", _dump(data))
-    ngx.say("packet content (ascii): ", data)
+    print("packet content: ", _dump(data))
+    print("packet content (ascii): ", data)
 
-    local byte = string.byte(data, 1)
+    local field_count = string.byte(data, 1)
 
     local typ
-    if byte == 0x00 then
+    if field_count == 0x00 then
         typ = "OK"
-    elseif byte == 0xff then
+    elseif field_count == 0xff then
         typ = "ERR"
-    elseif byte == 0xfe then
+    elseif field_count == 0xfe then
         typ = "EOF"
-    elseif byte <= 250 then
+    elseif field_count <= 250 then
         typ = "DATA"
     end
 
     return data, typ
+end
+
+
+local function _parse_err_packet(packet)
+    local errno, pos = _from_little_endian(packet, 2, 2 + 2 - 1)
+    local marker = string.sub(packet, pos, pos)
+    local sqlstate
+    if marker == '#' then
+        -- with sqlstate
+        pos = pos + 1
+        sqlstate = string.sub(packet, pos, pos + 5 - 1)
+        pos = pos + 5
+    end
+
+    local message = string.sub(packet, pos)
+    return errno, message, sqlstate
 end
 
 
@@ -201,26 +217,26 @@ function connect(self, opts)
     end
 
     if typ == "ERR" then
-        local errno, msg = _parse_err_packet(packet)
-        return nil, errno .. ": " .. msg
+        local errno, msg, sqlstate = _parse_err_packet(packet)
+        return nil, msg, errno, sqlstate
     end
 
     self.protocol_ver = string.byte(packet)
 
-    ngx.say("protocol version: ", self.protocol_ver)
+    print("protocol version: ", self.protocol_ver)
 
     local server_ver, pos = _from_cstring(packet, 2)
     if not server_ver then
         return nil, "bad handshake initialization packet: bad server version"
     end
 
-    ngx.say("server version: ", server_ver)
+    print("server version: ", server_ver)
 
     self.server_ver = server_ver
 
     local thread_id, pos = _from_little_endian(packet, pos, pos + 4 - 1)
 
-    ngx.say("thread id: ", thread_id)
+    print("thread id: ", thread_id)
 
     local scramble = string.sub(packet, pos, pos + 8 - 1)
     if not scramble then
@@ -232,23 +248,23 @@ function connect(self, opts)
     -- two lower bytes
     self.server_capabilities, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
-    ngx.say("server capabilities: ", self.server_capabilities)
+    print("server capabilities: ", self.server_capabilities)
 
     self.server_lang = string.byte(packet, pos)
     pos = pos + 1
 
-    ngx.say("server lang: ", self.server_lang)
+    print("server lang: ", self.server_lang)
 
     self.server_status, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
-    ngx.say("server status: ", self.server_status)
+    print("server status: ", self.server_status)
 
     local more_capabilities
     more_capabilities, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
     self.server_capabilities = bit.bor(self.server_capabilities, bit.lshift(more_capabilities, 16))
 
-    ngx.say("server capabilities: ", self.server_capabilities)
+    print("server capabilities: ", self.server_capabilities)
 
     local len = string.byte(packet, pos)
     len = len - 8 - 1
@@ -261,7 +277,7 @@ function connect(self, opts)
     end
 
     scramble = scramble .. scramble_part2
-    ngx.say("scramble: ", _dump(scramble))
+    print("scramble: ", _dump(scramble))
 
     local password = opts.password or ""
     local database = opts.database or ""
@@ -272,7 +288,7 @@ function connect(self, opts)
     -- local client_flags = self.server_capabilities
     local client_flags = 260047;
 
-    ngx.say("token: ", _dump(token))
+    print("token: ", _dump(token))
 
     local req = {
         _to_little_endian(client_flags, 4),
@@ -287,20 +303,27 @@ function connect(self, opts)
     local packet_len = 4 + 4 + 1 + 23 + string.len(user) + 1
         + string.len(scramble) + 1 + string.len(database) + 1
 
-    ngx.say("packet content length: ", packet_len)
-    ngx.say("packet content: ", _dump(table.concat(req, "")))
+    print("packet content length: ", packet_len)
+    print("packet content: ", _dump(table.concat(req, "")))
 
     local bytes, err = _send_packet(self, req, packet_len)
     if not bytes then
         return nil, "failed to send client authentication packet: " .. err
     end
 
-    ngx.say("packet sent ", bytes, " bytes")
+    print("packet sent ", bytes, " bytes")
 
     local packet, typ, err = _recv_packet(self)
     if not packet then
         return nil, "failed to receive the result packet: " .. err
     end
+
+    if typ == 'ERR' then
+        local errno, msg, sqlstate = _parse_err_packet(packet)
+        return nil, msg, errno, sqlstate
+    end
+
+    return 1
 end
 
 
@@ -331,6 +354,11 @@ function close(self)
     end
 
     return sock:close()
+end
+
+
+function server_ver(self)
+    return self.server_ver
 end
 
 
