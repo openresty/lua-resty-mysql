@@ -4,6 +4,18 @@ module("resty.mysql", package.seeall)
 
 
 local bit = require "bit"
+
+
+-- constants
+
+local STATE_CONNECTED = 1
+local STATE_COMMAND_SENT = 2
+
+local COM_QUERY = 0x03
+
+
+-- global variables
+
 local mt = { __index = resty.mysql }
 
 local sub = string.sub
@@ -48,12 +60,12 @@ end
 
 
 local function _to_cstring(data)
-    return data .. "\0"
+    return {data, "\0"}
 end
 
 
 local function _to_binary_coded_string(data)
-    return string.char(string.len(data)) .. data
+    return {string.char(string.len(data)), data}
 end
 
 
@@ -156,6 +168,66 @@ function _recv_packet(self)
     end
 
     return data, typ
+end
+
+
+local function _from_length_coded_bin(data, pos)
+    local first = string.byte(data, pos)
+
+    print("LCB: first: ", first)
+
+    if first >= 0 and first <= 250 then
+        return first, pos + 1
+    end
+
+    if first == 251 then
+        return nil, pos + 1
+    end
+
+    if first == 252 then
+        pos = pos + 1
+        return _from_little_endian(data, pos, pos + 2 - 1), pos + 2
+    end
+
+    if first == 253 then
+        pos = pos + 1
+        return _from_little_endian(data, pos, pos + 3 - 1), pos + 3
+    end
+
+    if first == 254 then
+        pos = pos + 1
+        return _from_little_endian(data, pos, pos + 8 - 1), pos + 8
+    end
+
+    return false, pos + 1
+end
+
+
+local function _parse_ok_packet(packet)
+    local res = {}
+    local pos
+
+    res.affected_rows, pos = _from_length_coded_bin(packet, 2)
+
+    print("affected rows: ", res.affected_rows, ", pos:", pos)
+
+    res.insert_id, pos = _from_length_coded_bin(packet, pos)
+
+    print("insert id: ", res.insert_id, ", pos:", pos)
+
+    res.server_status, pos = _from_little_endian(packet, pos, pos + 2 - 1)
+
+    print("server status: ", res.server_status, ", pos:", pos)
+
+    res.warning_count, pos = _from_little_endian(packet, pos, pos + 2 - 1)
+
+    print("warning count: ", res.warning_count, ", pos: ", pos)
+
+    res.message = string.sub(packet, pos)
+
+    print("message: ", res.message, ", pos:", pos)
+
+    return res
 end
 
 
@@ -315,8 +387,8 @@ function connect(self, opts)
     local packet_len = 4 + 4 + 1 + 23 + string.len(user) + 1
         + string.len(token) + 1 + string.len(database) + 1
 
-    print("packet content length: ", packet_len)
-    print("packet content: ", _dump(table.concat(req, "")))
+    -- print("packet content length: ", packet_len)
+    -- print("packet content: ", _dump(table.concat(req, "")))
 
     local bytes, err = _send_packet(self, req, packet_len)
     if not bytes then
@@ -343,6 +415,8 @@ function connect(self, opts)
         return nil, "bad packet type: " .. typ
     end
 
+    self.state = STATE_CONNECTED
+
     return 1
 end
 
@@ -352,6 +426,8 @@ function set_keepalive(self, ...)
     if not sock then
         return nil, "not initialized"
     end
+
+    self.state = nil
 
     return sock:setkeepalive(...)
 end
@@ -373,12 +449,72 @@ function close(self)
         return nil, "not initialized"
     end
 
+    self.state = nil
+
     return sock:close()
 end
 
 
 function server_ver(self)
     return self._server_ver
+end
+
+
+function send_query(self, query)
+    if self.state ~= STATE_CONNECTED then
+        return nil, "cannot send query in the current context: " .. self.state
+    end
+
+    local sock = self.sock
+    if not sock then
+        return nil, "not initialized"
+    end
+
+    self.packet_no = -1
+
+    local cmd_packet = {string.char(COM_QUERY), query}
+    local packet_len = 1 + string.len(query)
+
+    local bytes, err = _send_packet(self, cmd_packet, packet_len)
+    if not bytes then
+        return nil, err
+    end
+
+    self.state = STATE_COMMAND_SENT
+
+    print("packet sent ", bytes, " bytes")
+
+    return bytes
+end
+
+
+function read_result(self)
+    if self.state ~= STATE_COMMAND_SENT then
+        return nil, "cannot read result in the current context: " .. self.state
+    end
+
+    local sock = self.sock
+    if not sock then
+        return nil, "not initialized"
+    end
+
+    local packet, typ, err = _recv_packet(self)
+    if not packet then
+        return nil, err
+    end
+
+    if typ == "ERR" then
+        local errno, msg, sqlstate = _parse_err_packet(packet)
+        return nil, msg, errno, sqlstate
+    end
+
+    if typ ~= 'OK' then
+        return nil, "packet type " .. typ .. " not supported"
+    end
+
+    -- typ == 'OK'
+
+    return _parse_ok_packet(packet)
 end
 
 
