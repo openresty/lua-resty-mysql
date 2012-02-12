@@ -20,7 +20,7 @@ local function _from_little_endian(data, i, j)
         if n > 0 then
             res = bit.lshift(res, n * 8)
         end
-        print("byte: ", string.byte(data, k))
+        -- print("byte: ", string.byte(data, k))
         res = bit.bor(res, string.byte(data, k))
         n = n + 1
     end
@@ -266,8 +266,10 @@ function connect(self, opts)
 
     print("server capabilities: ", self._server_capabilities)
 
-    local len = string.byte(packet, pos)
-    len = len - 8 - 1
+    -- local len = string.byte(packet, pos)
+    len = 21 - 8 - 1
+
+    print("scramble len: ", len)
 
     pos = pos + 1 + 10
 
