@@ -19,6 +19,7 @@ $ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
 $ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
 
 no_long_string();
+no_shuffle();
 
 run_tests();
 

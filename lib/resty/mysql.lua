@@ -301,7 +301,7 @@ function connect(self, opts)
     }
 
     local packet_len = 4 + 4 + 1 + 23 + string.len(user) + 1
-        + string.len(scramble) + 1 + string.len(database) + 1
+        + string.len(token) + 1 + string.len(database) + 1
 
     print("packet content length: ", packet_len)
     print("packet content: ", _dump(table.concat(req, "")))
