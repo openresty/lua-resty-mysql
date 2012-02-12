@@ -124,6 +124,10 @@ function _recv_packet(self)
         return nil, nil, "empty packet"
     end
 
+    if len > self._max_packet_size then
+        return nil, nil, "packet size too big: " .. len
+    end
+
     local num = string.byte(data, 4)
 
     print("packet no: ", num)
@@ -191,6 +195,12 @@ function connect(self, opts)
     if not sock then
         return nil, "not initialized"
     end
+
+    local max_packet_size = opts.max_packet_size
+    if not max_packet_size then
+        max_packet_size = 1024 * 100
+    end
+    self._max_packet_size = max_packet_size
 
     local ok, err
 
@@ -294,7 +304,7 @@ function connect(self, opts)
 
     local req = {
         _to_little_endian(client_flags, 4),
-        _to_little_endian(8192, 4),
+        _to_little_endian(self._max_packet_size, 4),
         _to_little_endian(0, 1),
         string.rep("\0", 23),
         _to_cstring(user),
