@@ -176,12 +176,16 @@ local function _from_length_coded_bin(data, pos)
 
     print("LCB: first: ", first)
 
+    if not first then
+        return nil, pos
+    end
+
     if first >= 0 and first <= 250 then
         return first, pos + 1
     end
 
     if first == 251 then
-        return nil, pos + 1
+        return ngx.null, pos + 1
     end
 
     if first == 252 then
@@ -200,6 +204,17 @@ local function _from_length_coded_bin(data, pos)
     end
 
     return false, pos + 1
+end
+
+
+local function _from_length_coded_str(data, pos)
+    local len
+    len, pos = _from_length_coded_bin(data, pos)
+    if len == nil or len == ngx.null then
+        return ngx.null, pos
+    end
+
+    return string.sub(data, pos, pos + len - 1), pos + len
 end
 
 
@@ -223,7 +238,10 @@ local function _parse_ok_packet(packet)
 
     print("warning count: ", res.warning_count, ", pos: ", pos)
 
-    res.message = string.sub(packet, pos)
+    local message = string.sub(packet, pos)
+    if message and message ~= "" then
+        res.message = message
+    end
 
     print("message: ", res.message, ", pos:", pos)
 
@@ -244,6 +262,96 @@ local function _parse_err_packet(packet)
 
     local message = string.sub(packet, pos)
     return errno, message, sqlstate
+end
+
+
+local function _parse_result_set_header_packet(packet)
+    local field_count, pos = _from_length_coded_bin(packet, 1)
+
+    local extra
+    extra = _from_length_coded_bin(packet, pos)
+
+    return field_count, extra
+end
+
+
+local function _parse_field_packet(data)
+    local col = {}
+    local pos
+    col.catalog, pos = _from_length_coded_str(data, 1)
+
+    print("catalog: ", col.catalog, ", pos:", pos)
+
+    col.db, pos = _from_length_coded_str(data, pos)
+    col.table, pos = _from_length_coded_str(data, pos)
+    col.org_table, pos = _from_length_coded_str(data, pos)
+    col.name, pos = _from_length_coded_str(data, pos)
+    col.org_name, pos = _from_length_coded_str(data, pos)
+
+    pos = pos + 1 -- ignore the filler
+
+    col.charsetnr, pos = _from_little_endian(data, pos, pos + 2 - 1)
+
+    col.length, pos = _from_little_endian(data, pos, pos + 4 - 1)
+
+    col.type = string.byte(data, pos)
+    pos = pos + 1
+
+    col.flags, pos = _from_little_endian(data, pos, pos + 2 - 1)
+
+    col.decimals = string.byte(data, pos)
+    pos = pos + 1
+
+    local default = string.sub(data, pos + 2)
+    if default and default ~= "" then
+        col.default = default
+    end
+
+    return col
+end
+
+
+local function _parse_row_data_packet(data, cols)
+    local row = {}
+    local pos = 1
+    for i = 1, #cols do
+        local value
+        value, pos = _from_length_coded_str(data, pos)
+        local col = cols[i]
+        local typ = col.type
+        local name = col.name
+
+        print("row field value: ", value, ", type: ", typ)
+
+        if typ < 0x06 or typ == 0x08 or typ == 0x09 then
+            value = tonumber(value)
+        end
+        -- table.insert(row, value)
+        row[name] = value
+    end
+
+    return row
+end
+
+
+local function _recv_field_packet(self)
+    local packet, typ, err = _recv_packet(self)
+    if not packet then
+        return nil, err
+    end
+
+    if typ == "ERR" then
+        local errno, msg, sqlstate = _parse_err_packet(packet)
+        return nil, msg, errno, sqlstate
+    end
+
+    if typ ~= 'DATA' then
+        return nil, "bad field packet type: " .. typ
+    end
+
+    -- typ == 'DATA'
+
+    return _parse_field_packet(packet)
 end
 
 
@@ -504,17 +612,91 @@ function read_result(self)
     end
 
     if typ == "ERR" then
+        self.state = STATE_CONNECTED
+
         local errno, msg, sqlstate = _parse_err_packet(packet)
         return nil, msg, errno, sqlstate
     end
 
-    if typ ~= 'OK' then
+    if typ == 'OK' then
+        self.state = STATE_CONNECTED
+
+        return _parse_ok_packet(packet)
+    end
+
+    if typ ~= 'DATA' then
+        self.state = STATE_CONNECTED
+
         return nil, "packet type " .. typ .. " not supported"
     end
 
-    -- typ == 'OK'
+    -- typ == 'DATA'
 
-    return _parse_ok_packet(packet)
+    print("read the result set header packet")
+
+    local field_count, extra = _parse_result_set_header_packet(packet)
+
+    print("field count: ", field_count)
+
+    local cols = {}
+    for i = 1, field_count do
+        local col, err, errno, sqlstate = _recv_field_packet(self)
+        if not col then
+            return nil, err, errno, sqlstate
+        end
+
+        table.insert(cols, col)
+    end
+
+    local packet, typ, err = _recv_packet(self)
+    if not packet then
+        return nil, err
+    end
+
+    if typ ~= 'EOF' then
+        return nil, "unexpected packet type " .. typ .. " while eof packet is "
+            .. "expected"
+    end
+
+    -- typ == 'EOF'
+
+    local rows = {}
+    while true do
+        print("reading a row")
+
+        packet, typ, err = _recv_packet(self)
+        if not packet then
+            return nil, err
+        end
+
+        if typ == 'EOF' then
+            -- TODO: multi result set support
+            break
+        end
+
+        if typ ~= 'DATA' then
+            return nil, 'bad row packet type: ' .. typ
+        end
+
+        -- typ == 'DATA'
+
+        local row = _parse_row_data_packet(packet, cols)
+        table.insert(rows, row)
+    end
+
+    self.state = STATE_CONNECTED
+
+    return rows
+end
+
+
+function query(self, query)
+    local bytes, err = self:send_query(query)
+    if not bytes then
+        return nil, "failed to send query: " .. err
+    end
+
+    return self:read_result()
 end
 
 
