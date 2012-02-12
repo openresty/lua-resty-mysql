@@ -71,7 +71,7 @@ local function _dumphex(data)
 end
 
 
-local function _eval_token(password, scramble)
+local function _compute_token(password, scramble)
     if password == "" then
         return ""
     end
@@ -295,7 +295,7 @@ function connect(self, opts)
     local database = opts.database or ""
     local user = opts.user or ""
 
-    local token = _eval_token(password, scramble)
+    local token = _compute_token(password, scramble)
 
     -- local client_flags = self._server_capabilities
     local client_flags = 260047;
