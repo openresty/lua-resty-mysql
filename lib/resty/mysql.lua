@@ -335,6 +335,14 @@ function connect(self, opts)
         return nil, msg, errno, sqlstate
     end
 
+    if typ == 'EOF' then
+        return nil, "old pre-4.1 authentication protocol not supported"
+    end
+
+    if typ ~= 'OK' then
+        return nil, "bad packet type: " .. typ
+    end
+
     return 1
 end
 
