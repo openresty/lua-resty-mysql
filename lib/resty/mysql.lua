@@ -25,6 +25,18 @@ local len = string.len
 local null = ngx.null
 
 
+-- mysql field value type converters
+local converters = {}
+
+for i = 0x01, 0x05 do
+    -- tiny, short, long, float, double
+    converters[i] = tonumber
+end
+converters[0x08] = tonumber  -- long long
+converters[0x09] = tonumber  -- int24
+converters[0x0d] = tonumber  -- year
+
+
 local function _from_little_endian(data, i, j)
     local res = 0
     local n = 0
@@ -323,10 +335,14 @@ local function _parse_row_data_packet(data, cols)
 
         print("row field value: ", value, ", type: ", typ)
 
-        if typ < 0x06 or typ == 0x08 or typ == 0x09 then
-            value = tonumber(value)
+        if value ~= ngx.null then
+            local conv = converters[typ]
+            if conv then
+                value = conv(value)
+            end
+            -- table.insert(row, value)
         end
-        -- table.insert(row, value)
+
         row[name] = value
     end
 

@@ -407,3 +407,89 @@ result: {}
 --- no_error_log
 [error]
 
+
+=== TEST 6: numerical types
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            local cjson = require "cjson"
+
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                host = "$TEST_NGINX_MYSQL_HOST",
+                port = $TEST_NGINX_MYSQL_PORT,
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            ngx.say("connected to mysql.")
+
+            local res, err, errno, sqlstate = db:query("drop table if exists foo")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("table foo dropped.")
+
+            res, err, errno, sqlstate = db:query("create table foo (id serial primary key, bar tinyint, baz smallint, bah float, blah double, kah bigint, hah mediumint, haha year, lah int)")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("table foo created.")
+
+            res, err, errno, sqlstate = db:query("insert into foo (bar, baz, bah, blah, kah, hah, haha, lah) value (3, 4, 3.14, 5.16, 65535, 256, 1998, 579),(null, null, null, null, null, null, null, null)")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say(res.affected_rows .. " rows inserted into table foo (last id: ", res.insert_id, ")")
+
+            res, err, errno, sqlstate = db:query("select * from foo order by id asc")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("result: ", cjson.encode(res))
+
+            res, err, errno, sqlstate = db:query("select * from foo order by id desc")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("result: ", cjson.encode(res))
+
+            local ok, err = db:close()
+            if not ok then
+                ngx.say("failed to close: ", err)
+                return
+            end
+        ';
+    }
+--- request
+GET /t
+--- response_body
+connected to mysql.
+table foo dropped.
+table foo created.
+2 rows inserted into table foo (last id: 1)
+result: [{"id":1,"hah":256,"kah":65535,"lah":579,"haha":1998,"bah":3.14,"blah":5.16,"baz":4,"bar":3},{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":null,"baz":null,"bar":null}]
+result: [{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":null,"baz":null,"bar":null},{"id":1,"hah":256,"kah":65535,"lah":579,"haha":1998,"bah":3.14,"blah":5.16,"baz":4,"bar":3}]
+--- no_error_log
+[error]
+
