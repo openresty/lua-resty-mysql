@@ -496,7 +496,7 @@ result: [{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":
 
 
 
-=== TEST 9: multi-statements
+=== TEST 9: multiple DDL statements
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -522,7 +522,9 @@ result: [{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":
 
             ngx.say("connected to mysql.")
 
-            local res, err, errno, sqlstate = db:query("drop table if exists foo; create table foo (id serial primary key, name text);")
+            local res, err, errno, sqlstate =
+                db:query("drop table if exists foo; "
+                         .. "create table foo (id serial primary key, name text);")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
@@ -530,7 +532,8 @@ result: [{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":
 
             ngx.say("result: ", cjson.encode(res), ", err:", err)
 
-            res, err, errno, sqlstate = db:query("select * from cats order by id asc")
+            res, err, errno, sqlstate =
+                db:query("select * from cats order by id asc")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
             else
@@ -544,7 +547,8 @@ result: [{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":
                 ngx.say("result: ", cjson.encode(res), ", err:", err)
             end
 
-            res, err, errno, sqlstate = db:query("select * from cats order by id asc")
+            res, err, errno, sqlstate =
+                db:query("select * from cats order by id asc")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
             else
@@ -597,7 +601,8 @@ result: {}, err:nil
 
             ngx.say("connected to mysql.")
 
-            local res, err, errno, sqlstate = db:query("drop table if exists cats")
+            local res, err, errno, sqlstate =
+                db:query("drop table if exists cats")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
@@ -605,7 +610,9 @@ result: {}, err:nil
 
             ngx.say("table cats dropped.")
 
-            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(5))")
+            res, err, errno, sqlstate =
+                db:query("create table cats "
+                         .. "(id serial primary key, name varchar(5))")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
@@ -613,7 +620,9 @@ result: {}, err:nil
 
             ngx.say("table cats created.")
 
-            res, err, errno, sqlstate = db:query("insert into cats (name) value (\'Bob\'),(\'\'),(null)")
+            res, err, errno, sqlstate =
+                db:query("insert into cats (name) "
+                         .. "values (\'Bob\'),(\'\'),(null)")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
@@ -621,7 +630,9 @@ result: {}, err:nil
 
             ngx.say(res.affected_rows .. " rows inserted into table cats (last id: ", res.insert_id, ")")
 
-            res, err, errno, sqlstate = db:query("select * from cats order by id asc; select * from cats order by id desc")
+            res, err, errno, sqlstate =
+                db:query("select * from cats order by id asc; "
+                         .. "select * from cats order by id desc")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
