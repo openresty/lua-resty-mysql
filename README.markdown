@@ -22,6 +22,8 @@ This Lua library takes advantage of ngx_lua's cosocket API, which ensures
 
 Note that at least [ngx_lua 0.5.0rc6](https://github.com/chaoslawful/lua-nginx-module/tags) or [ngx_openresty 1.0.11.9](http://openresty.org/#Download) is required.
 
+Also, the [bit library](http://bitop.luajit.org/) is also required. If you're using LuaJIT 2.0 with ngx_lua, then this library is already available by default.
+
 Synopsis
 ========
 
