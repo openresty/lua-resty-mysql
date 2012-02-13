@@ -118,7 +118,7 @@ function _send_packet(self, req, size)
 
     self.packet_no = self.packet_no + 1
 
-    print("packet no: ", self.packet_no)
+    --print("packet no: ", self.packet_no)
 
     local packet = {
         _to_little_endian(size, 3),
@@ -138,11 +138,11 @@ function _recv_packet(self)
         return nil, nil, "failed to receive packet header: " .. err
     end
 
-    print("packet header: ", _dump(data))
+    --print("packet header: ", _dump(data))
 
     local len = _from_little_endian(data, 1, 3)
 
-    print("packet length: ", len)
+    --print("packet length: ", len)
 
     if len == 0 then
         return nil, nil, "empty packet"
@@ -154,7 +154,7 @@ function _recv_packet(self)
 
     local num = string.byte(data, 4)
 
-    print("packet no: ", num)
+    --print("packet no: ", num)
 
     self.packet_no = num
 
@@ -163,8 +163,8 @@ function _recv_packet(self)
         return nil, nil, "failed to read packet content: " .. err
     end
 
-    print("packet content: ", _dump(data))
-    print("packet content (ascii): ", data)
+    --print("packet content: ", _dump(data))
+    --print("packet content (ascii): ", data)
 
     local field_count = string.byte(data, 1)
 
@@ -186,7 +186,7 @@ end
 local function _from_length_coded_bin(data, pos)
     local first = string.byte(data, pos)
 
-    print("LCB: first: ", first)
+    --print("LCB: first: ", first)
 
     if not first then
         return nil, pos
@@ -236,26 +236,26 @@ local function _parse_ok_packet(packet)
 
     res.affected_rows, pos = _from_length_coded_bin(packet, 2)
 
-    print("affected rows: ", res.affected_rows, ", pos:", pos)
+    --print("affected rows: ", res.affected_rows, ", pos:", pos)
 
     res.insert_id, pos = _from_length_coded_bin(packet, pos)
 
-    print("insert id: ", res.insert_id, ", pos:", pos)
+    --print("insert id: ", res.insert_id, ", pos:", pos)
 
     res.server_status, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
-    print("server status: ", res.server_status, ", pos:", pos)
+    --print("server status: ", res.server_status, ", pos:", pos)
 
     res.warning_count, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
-    print("warning count: ", res.warning_count, ", pos: ", pos)
+    --print("warning count: ", res.warning_count, ", pos: ", pos)
 
     local message = string.sub(packet, pos)
     if message and message ~= "" then
         res.message = message
     end
 
-    print("message: ", res.message, ", pos:", pos)
+    --print("message: ", res.message, ", pos:", pos)
 
     return res
 end
@@ -292,7 +292,7 @@ local function _parse_field_packet(data)
     local pos
     col.catalog, pos = _from_length_coded_str(data, 1)
 
-    print("catalog: ", col.catalog, ", pos:", pos)
+    --print("catalog: ", col.catalog, ", pos:", pos)
 
     col.db, pos = _from_length_coded_str(data, pos)
     col.table, pos = _from_length_coded_str(data, pos)
@@ -333,7 +333,7 @@ local function _parse_row_data_packet(data, cols)
         local typ = col.type
         local name = col.name
 
-        print("row field value: ", value, ", type: ", typ)
+        --print("row field value: ", value, ", type: ", typ)
 
         if value ~= ngx.null then
             local conv = converters[typ]
@@ -429,20 +429,20 @@ function connect(self, opts)
 
     self.protocol_ver = string.byte(packet)
 
-    print("protocol version: ", self.protocol_ver)
+    --print("protocol version: ", self.protocol_ver)
 
     local server_ver, pos = _from_cstring(packet, 2)
     if not server_ver then
         return nil, "bad handshake initialization packet: bad server version"
     end
 
-    print("server version: ", server_ver)
+    --print("server version: ", server_ver)
 
     self._server_ver = server_ver
 
     local thread_id, pos = _from_little_endian(packet, pos, pos + 4 - 1)
 
-    print("thread id: ", thread_id)
+    --print("thread id: ", thread_id)
 
     local scramble = string.sub(packet, pos, pos + 8 - 1)
     if not scramble then
@@ -454,28 +454,28 @@ function connect(self, opts)
     -- two lower bytes
     self._server_capabilities, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
-    print("server capabilities: ", self._server_capabilities)
+    --print("server capabilities: ", self._server_capabilities)
 
     self._server_lang = string.byte(packet, pos)
     pos = pos + 1
 
-    print("server lang: ", self._server_lang)
+    --print("server lang: ", self._server_lang)
 
     self._server_status, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
-    print("server status: ", self._server_status)
+    --print("server status: ", self._server_status)
 
     local more_capabilities
     more_capabilities, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
     self._server_capabilities = bit.bor(self._server_capabilities, bit.lshift(more_capabilities, 16))
 
-    print("server capabilities: ", self._server_capabilities)
+    --print("server capabilities: ", self._server_capabilities)
 
     -- local len = string.byte(packet, pos)
     len = 21 - 8 - 1
 
-    print("scramble len: ", len)
+    --print("scramble len: ", len)
 
     pos = pos + 1 + 10
 
@@ -485,7 +485,7 @@ function connect(self, opts)
     end
 
     scramble = scramble .. scramble_part2
-    print("scramble: ", _dump(scramble))
+    --print("scramble: ", _dump(scramble))
 
     local password = opts.password or ""
     local database = opts.database or ""
@@ -496,7 +496,7 @@ function connect(self, opts)
     -- local client_flags = self._server_capabilities
     local client_flags = 260047;
 
-    print("token: ", _dump(token))
+    --print("token: ", _dump(token))
 
     local req = {
         _to_little_endian(client_flags, 4),
@@ -519,7 +519,7 @@ function connect(self, opts)
         return nil, "failed to send client authentication packet: " .. err
     end
 
-    print("packet sent ", bytes, " bytes")
+    --print("packet sent ", bytes, " bytes")
 
     local packet, typ, err = _recv_packet(self)
     if not packet then
@@ -606,7 +606,7 @@ function send_query(self, query)
 
     self.state = STATE_COMMAND_SENT
 
-    print("packet sent ", bytes, " bytes")
+    --print("packet sent ", bytes, " bytes")
 
     return bytes
 end
@@ -648,11 +648,11 @@ function read_result(self)
 
     -- typ == 'DATA'
 
-    print("read the result set header packet")
+    --print("read the result set header packet")
 
     local field_count, extra = _parse_result_set_header_packet(packet)
 
-    print("field count: ", field_count)
+    --print("field count: ", field_count)
 
     local cols = {}
     for i = 1, field_count do
@@ -678,7 +678,7 @@ function read_result(self)
 
     local rows = {}
     while true do
-        print("reading a row")
+        --print("reading a row")
 
         packet, typ, err = _recv_packet(self)
         if not packet then
