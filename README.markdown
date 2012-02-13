@@ -1,7 +1,7 @@
 Name
 ====
 
-lua-resty-mysql - Lua MySQL client driver for the ngx_lua based on the cosocket API
+lua-resty-mysql - Lua MySQL client driver for ngx_lua based on the cosocket API
 
 Status
 ======
