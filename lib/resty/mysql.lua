@@ -21,8 +21,20 @@ local mt = { __index = resty.mysql }
 local sub = string.sub
 local tcp = ngx.socket.tcp
 local insert = table.insert
-local len = string.len
+local strlen = string.len
+local strbyte = string.byte
+local strchar = string.char
+local strfind = string.find
+local strrep = string.rep
 local null = ngx.null
+local band = bit.band
+local bxor = bit.bxor
+local bor = bit.bor
+local lshift = bit.lshift
+local rshift = bit.rshift
+local tohex = bit.tohex
+local sha1 = ngx.sha1_bin
+local concat = table.concat
 
 
 -- mysql field value type converters
@@ -42,10 +54,10 @@ local function _from_little_endian(data, i, j)
     local n = 0
     for k = j, i, -1 do
         if n > 0 then
-            res = bit.lshift(res, n * 8)
+            res = lshift(res, n * 8)
         end
-        -- print("byte: ", string.byte(data, k))
-        res = bit.bor(res, string.byte(data, k))
+        -- print("byte: ", strbyte(data, k))
+        res = bor(res, strbyte(data, k))
         n = n + 1
     end
     return res, j + 1
@@ -55,19 +67,19 @@ end
 local function _to_little_endian(num, size)
     local res = {}
     for i = 0, size - 1 do
-        table.insert(res, bit.band(bit.rshift(num, i * 8), 0xff))
+        insert(res, band(rshift(num, i * 8), 0xff))
     end
-    return string.char(unpack(res))
+    return strchar(unpack(res))
 end
 
 
 local function _from_cstring(data, i)
-    local last = string.find(data, "\0", i, true)
+    local last = strfind(data, "\0", i, true)
     if not last then
         return nil, nil
     end
 
-    return string.sub(data, i, last), last + 1
+    return sub(data, i, last), last + 1
 end
 
 
@@ -77,21 +89,21 @@ end
 
 
 local function _to_binary_coded_string(data)
-    return {string.char(string.len(data)), data}
+    return {strchar(strlen(data)), data}
 end
 
 
 local function _dump(data)
-    return table.concat({string.byte(data, 1, #data)}, " ")
+    return concat({strbyte(data, 1, #data)}, " ")
 end
 
 
 local function _dumphex(data)
     local bytes = {}
     for i = 1, #data do
-        table.insert(bytes, bit.tohex(string.byte(data, i), 2))
+        insert(bytes, tohex(strbyte(data, i), 2))
     end
-    return table.concat(bytes, " ")
+    return concat(bytes, " ")
 end
 
 
@@ -100,16 +112,16 @@ local function _compute_token(password, scramble)
         return ""
     end
 
-    local stage1 = ngx.sha1_bin(password)
-    local stage2 = ngx.sha1_bin(stage1)
-    local stage3 = ngx.sha1_bin(scramble .. stage2)
+    local stage1 = sha1(password)
+    local stage2 = sha1(stage1)
+    local stage3 = sha1(scramble .. stage2)
     local bytes = {}
     for i = 1, #stage1 do
-         table.insert(bytes,
-             bit.bxor(string.byte(stage3, i), string.byte(stage1, i)))
+         insert(bytes,
+             bxor(strbyte(stage3, i), strbyte(stage1, i)))
     end
 
-    return string.char(unpack(bytes))
+    return strchar(unpack(bytes))
 end
 
 
@@ -122,7 +134,7 @@ function _send_packet(self, req, size)
 
     local packet = {
         _to_little_endian(size, 3),
-        string.char(self.packet_no),
+        strchar(self.packet_no),
         req
     }
 
@@ -152,7 +164,7 @@ function _recv_packet(self)
         return nil, nil, "packet size too big: " .. len
     end
 
-    local num = string.byte(data, 4)
+    local num = strbyte(data, 4)
 
     --print("packet no: ", num)
 
@@ -166,7 +178,7 @@ function _recv_packet(self)
     --print("packet content: ", _dump(data))
     --print("packet content (ascii): ", data)
 
-    local field_count = string.byte(data, 1)
+    local field_count = strbyte(data, 1)
 
     local typ
     if field_count == 0x00 then
@@ -184,7 +196,7 @@ end
 
 
 local function _from_length_coded_bin(data, pos)
-    local first = string.byte(data, pos)
+    local first = strbyte(data, pos)
 
     --print("LCB: first: ", first)
 
@@ -197,7 +209,7 @@ local function _from_length_coded_bin(data, pos)
     end
 
     if first == 251 then
-        return ngx.null, pos + 1
+        return null, pos + 1
     end
 
     if first == 252 then
@@ -222,11 +234,11 @@ end
 local function _from_length_coded_str(data, pos)
     local len
     len, pos = _from_length_coded_bin(data, pos)
-    if len == nil or len == ngx.null then
-        return ngx.null, pos
+    if len == nil or len == null then
+        return null, pos
     end
 
-    return string.sub(data, pos, pos + len - 1), pos + len
+    return sub(data, pos, pos + len - 1), pos + len
 end
 
 
@@ -250,7 +262,7 @@ local function _parse_ok_packet(packet)
 
     --print("warning count: ", res.warning_count, ", pos: ", pos)
 
-    local message = string.sub(packet, pos)
+    local message = sub(packet, pos)
     if message and message ~= "" then
         res.message = message
     end
@@ -263,16 +275,16 @@ end
 
 local function _parse_err_packet(packet)
     local errno, pos = _from_little_endian(packet, 2, 2 + 2 - 1)
-    local marker = string.sub(packet, pos, pos)
+    local marker = sub(packet, pos, pos)
     local sqlstate
     if marker == '#' then
         -- with sqlstate
         pos = pos + 1
-        sqlstate = string.sub(packet, pos, pos + 5 - 1)
+        sqlstate = sub(packet, pos, pos + 5 - 1)
         pos = pos + 5
     end
 
-    local message = string.sub(packet, pos)
+    local message = sub(packet, pos)
     return errno, message, sqlstate
 end
 
@@ -306,15 +318,15 @@ local function _parse_field_packet(data)
 
     col.length, pos = _from_little_endian(data, pos, pos + 4 - 1)
 
-    col.type = string.byte(data, pos)
+    col.type = strbyte(data, pos)
     pos = pos + 1
 
     col.flags, pos = _from_little_endian(data, pos, pos + 2 - 1)
 
-    col.decimals = string.byte(data, pos)
+    col.decimals = strbyte(data, pos)
     pos = pos + 1
 
-    local default = string.sub(data, pos + 2)
+    local default = sub(data, pos + 2)
     if default and default ~= "" then
         col.default = default
     end
@@ -335,12 +347,12 @@ local function _parse_row_data_packet(data, cols)
 
         --print("row field value: ", value, ", type: ", typ)
 
-        if value ~= ngx.null then
+        if value ~= null then
             local conv = converters[typ]
             if conv then
                 value = conv(value)
             end
-            -- table.insert(row, value)
+            -- insert(row, value)
         end
 
         row[name] = value
@@ -427,7 +439,7 @@ function connect(self, opts)
         return nil, msg, errno, sqlstate
     end
 
-    self.protocol_ver = string.byte(packet)
+    self.protocol_ver = strbyte(packet)
 
     --print("protocol version: ", self.protocol_ver)
 
@@ -444,7 +456,7 @@ function connect(self, opts)
 
     --print("thread id: ", thread_id)
 
-    local scramble = string.sub(packet, pos, pos + 8 - 1)
+    local scramble = sub(packet, pos, pos + 8 - 1)
     if not scramble then
         return nil, "1st part of scramble not found"
     end
@@ -456,7 +468,7 @@ function connect(self, opts)
 
     --print("server capabilities: ", self._server_capabilities)
 
-    self._server_lang = string.byte(packet, pos)
+    self._server_lang = strbyte(packet, pos)
     pos = pos + 1
 
     --print("server lang: ", self._server_lang)
@@ -468,18 +480,18 @@ function connect(self, opts)
     local more_capabilities
     more_capabilities, pos = _from_little_endian(packet, pos, pos + 2 - 1)
 
-    self._server_capabilities = bit.bor(self._server_capabilities, bit.lshift(more_capabilities, 16))
+    self._server_capabilities = bor(self._server_capabilities, lshift(more_capabilities, 16))
 
     --print("server capabilities: ", self._server_capabilities)
 
-    -- local len = string.byte(packet, pos)
-    len = 21 - 8 - 1
+    -- local len = strbyte(packet, pos)
+    local len = 21 - 8 - 1
 
     --print("scramble len: ", len)
 
     pos = pos + 1 + 10
 
-    local scramble_part2 = string.sub(packet, pos, pos + len - 1)
+    local scramble_part2 = sub(packet, pos, pos + len - 1)
     if not scramble_part2 then
         return nil, "2nd part of scramble not found"
     end
@@ -502,17 +514,17 @@ function connect(self, opts)
         _to_little_endian(client_flags, 4),
         _to_little_endian(self._max_packet_size, 4),
         _to_little_endian(0, 1),
-        string.rep("\0", 23),
+        strrep("\0", 23),
         _to_cstring(user),
         _to_binary_coded_string(token),
         _to_cstring(database)
     }
 
-    local packet_len = 4 + 4 + 1 + 23 + string.len(user) + 1
-        + string.len(token) + 1 + string.len(database) + 1
+    local packet_len = 4 + 4 + 1 + 23 + strlen(user) + 1
+        + strlen(token) + 1 + strlen(database) + 1
 
     -- print("packet content length: ", packet_len)
-    -- print("packet content: ", _dump(table.concat(req, "")))
+    -- print("packet content: ", _dump(concat(req, "")))
 
     local bytes, err = _send_packet(self, req, packet_len)
     if not bytes then
@@ -596,8 +608,8 @@ function send_query(self, query)
 
     self.packet_no = -1
 
-    local cmd_packet = {string.char(COM_QUERY), query}
-    local packet_len = 1 + string.len(query)
+    local cmd_packet = {strchar(COM_QUERY), query}
+    local packet_len = 1 + strlen(query)
 
     local bytes, err = _send_packet(self, cmd_packet, packet_len)
     if not bytes then
@@ -661,7 +673,7 @@ function read_result(self)
             return nil, err, errno, sqlstate
         end
 
-        table.insert(cols, col)
+        insert(cols, col)
     end
 
     local packet, typ, err = _recv_packet(self)
@@ -697,7 +709,7 @@ function read_result(self)
         -- typ == 'DATA'
 
         local row = _parse_row_data_packet(packet, cols)
-        table.insert(rows, row)
+        insert(rows, row)
     end
 
     self.state = STATE_CONNECTED
