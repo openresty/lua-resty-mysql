@@ -292,7 +292,7 @@ bad result: You have an error in your SQL syntax; check the manual that correspo
                 return
             end
 
-            ngx.say(res.affected_rows .. " rows inserted into table cats (last id: ", res.insert_id, ")")
+            ngx.say(res.affected_rows, " rows inserted into table cats (last id: ", res.insert_id, ")")
 
             res, err, errno, sqlstate = db:query("select * from cats order by id asc")
             if not res then
