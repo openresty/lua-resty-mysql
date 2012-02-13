@@ -441,6 +441,13 @@ function connect(self, opts)
         return nil, 'failed to connect: ' .. err
     end
 
+    local reused = sock:getreusedtimes()
+
+    if reused and reused > 0 then
+        self.state = STATE_CONNECTED
+        return 1
+    end
+
     local packet, typ, err = _recv_packet(self)
     if not packet then
         return nil, err
@@ -614,7 +621,7 @@ end
 
 function send_query(self, query)
     if self.state ~= STATE_CONNECTED then
-        return nil, "cannot send query in the current context: " .. self.state
+        return nil, "cannot send query in the current context: " .. (self.state or "nil")
     end
 
     local sock = self.sock

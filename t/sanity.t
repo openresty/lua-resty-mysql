@@ -693,6 +693,37 @@ result: [{"name":null,"id":3},{"name":"","id":2},{"name":"Bob","id":1}], err:nil
                 return
             end
 
+            ngx.say("connected to mysql.")
+
+            local res, err, errno, sqlstate =
+                db:query("drop table if exists cats")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("table cats dropped.")
+
+            res, err, errno, sqlstate =
+                db:query("create table cats "
+                         .. "(id serial primary key, name varchar(5))")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("table cats created.")
+
+            res, err, errno, sqlstate =
+                db:query("insert into cats (name) "
+                         .. "values (\'Bob\'),(\'\'),(null)")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say(res.affected_rows .. " rows inserted into table cats (last id: ", res.insert_id, ")")
+
             res, err, errno, sqlstate =
                 db:query("select * from cats order by id asc; "
                          .. "select * from cats order by id desc")
@@ -713,8 +744,80 @@ result: [{"name":null,"id":3},{"name":"","id":2},{"name":"Bob","id":1}], err:nil
 --- request
 GET /t
 --- response_body
+connected to mysql.
+table cats dropped.
+table cats created.
+3 rows inserted into table cats (last id: 1)
 result: [{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}], err:again
 failed to set keepalive: cannot be reused in the current connection state: 2
+--- no_error_log
+[error]
+
+
+
+=== TEST 12: set keepalive
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            local cjson = require "cjson"
+
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                host = "$TEST_NGINX_MYSQL_HOST",
+                port = $TEST_NGINX_MYSQL_PORT,
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            ngx.say("connected to mysql: ", db:get_reused_times())
+
+            local ok, err = db:set_keepalive()
+            if not ok then
+                ngx.say("failed to set keepalive: ", err)
+                return
+            end
+
+ok, err, errno, sqlstate = db:connect({
+                host = "$TEST_NGINX_MYSQL_HOST",
+                port = $TEST_NGINX_MYSQL_PORT,
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            ngx.say("connected to mysql: ", db:get_reused_times())
+
+            res, err, errno, sqlstate =
+                db:query("select * from cats order by id asc;")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("result: ", cjson.encode(res), ", err:", err)
+
+            local ok, err = db:set_keepalive()
+            if not ok then
+                ngx.say("failed to set keepalive: ", err)
+                return
+            end
+        ';
+    }
+--- request
+GET /t
+--- response_body_like chop
+^connected to mysql: [02]
+connected to mysql: [13]
+result: \[{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}\], err:nil$
 --- no_error_log
 [error]
 
