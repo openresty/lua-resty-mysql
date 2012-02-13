@@ -667,3 +667,54 @@ result: [{"name":null,"id":3},{"name":"","id":2},{"name":"Bob","id":1}], err:nil
 --- no_error_log
 [error]
 
+
+
+=== TEST 11: set_keepalive in the wrong state
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            local cjson = require "cjson"
+
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                host = "$TEST_NGINX_MYSQL_HOST",
+                port = $TEST_NGINX_MYSQL_PORT,
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            res, err, errno, sqlstate =
+                db:query("select * from cats order by id asc; "
+                         .. "select * from cats order by id desc")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("result: ", cjson.encode(res), ", err:", err)
+
+            local ok, err = db:set_keepalive()
+            if not ok then
+                ngx.say("failed to set keepalive: ", err)
+                return
+            end
+        ';
+    }
+--- request
+GET /t
+--- response_body
+result: [{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}], err:again
+failed to set keepalive: cannot be reused in the current connection state: 2
+--- no_error_log
+[error]
+
