@@ -22,7 +22,7 @@ This Lua library takes advantage of ngx_lua's cosocket API, which ensures
 
 Note that at least [ngx_lua 0.5.0rc6](https://github.com/chaoslawful/lua-nginx-module/tags) or [ngx_openresty 1.0.11.9](http://openresty.org/#Download) is required.
 
-Also, the [bit library](http://bitop.luajit.org/) is also required. If you're using LuaJIT 2.0 with ngx_lua, then this library is already available by default.
+Also, the [bit library](http://bitop.luajit.org/) is also required. If you're using LuaJIT 2.0 with ngx_lua, then the `bit` library is already available by default.
 
 Synopsis
 ========
@@ -174,6 +174,53 @@ close
 Closes the current mysql connection and returns the status.
 
 In case of success, returns `1`. In case of errors, returns `nil` with a string describing the error.
+
+send_query
+----------
+`syntax: bytes, err = db:send_query(query)`
+
+Sends the query to the remote MySQL server without waiting for its replies.
+
+Returns the bytes successfully sent out in success and otherwise returns `nil` and a string describing the error.
+
+You should use the `read_result` method to read the MySQL replies afterwards.
+
+read_result
+-----------
+`syntax: res, err, errno, sqlstate = db:read_result()`
+
+Reads in one result returned from the MySQL server.
+
+It returns a Lua table (`res`) describing the MySQL `OK packet` or `result set packet` for the query result.
+
+For queries corresponding to a result set, it returns an array holding all the rows. Each row holds key-value apirs for each data fields. For instance,
+
+    {
+        { name = "Bob", age = 32, phone = ngx.null },
+        { name = "Marry", age = 18, phone = "10666372"}
+    }
+
+For queries that do not correspond to a result set, it returns a Lua table like this:
+
+    {
+        insert_id = 0,
+        server_status = 2,
+        warning_count = 1,
+        affected_rows = 32,
+        message = nil
+    }
+
+If more results are following the current result, a second `err` return value will be given the string `again`. One should always check this (second) return value and if it is `again`, then she should call this method again to retrieve more results. This usually happens when the original query contains multiple statements (separated by semicolon in the same query string).
+
+In case of errors, this method returns at most 4 values: `nil`, `err`, `errcode`, and `sqlstate`. The `err` return value contains a string describing the error, the `errcode` return value holds the MySQL error code (a numerical value), and finally, the `sqlstate` return value contains the standard SQL error code that consists of 5 characters. Note that, the `errcode` and `sqlstate` might be `nil` if MySQL does not return them.
+
+query
+-----
+`syntax: res, err, errcode, sqlstate = db:query(query)`
+
+This is a shortcut for combining the `send_query` call and the first `read_result` call.
+
+You should always check if the `err` return value  is `again` in case of success because this method will only call `read_result` only once for you.
 
 Debugging
 =========
