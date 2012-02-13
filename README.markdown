@@ -87,7 +87,8 @@ Synopsis
                     return
                 end
 
-                ngx.say(res.affected_rows, " rows inserted into table cats (last id: ", res.insert_id, ")")
+                ngx.say(res.affected_rows, " rows inserted into table cats ",
+                        "(last insert id: ", res.insert_id, ")")
 
                 res, err, errno, sqlstate =
                     db:query("select * from cats order by id asc")
