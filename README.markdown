@@ -222,6 +222,14 @@ This is a shortcut for combining the `send_query` call and the first `read_resul
 
 You should always check if the `err` return value  is `again` in case of success because this method will only call `read_result` only once for you.
 
+server_ver
+----------
+`syntax: str = db:server_ver()`
+
+Returns the MySQL server version string, like `"5.1.64"`.
+
+You should only call this method after successfully connecting to a MySQL server, otherwise `nil` will be returned.
+
 Debugging
 =========
 
