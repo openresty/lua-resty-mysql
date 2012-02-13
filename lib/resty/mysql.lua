@@ -13,6 +13,8 @@ local STATE_COMMAND_SENT = 2
 
 local COM_QUERY = 0x03
 
+local SERVER_MORE_RESULTS_EXISTS = 8
+
 
 -- global variables
 
@@ -270,6 +272,16 @@ local function _parse_ok_packet(packet)
     --print("message: ", res.message, ", pos:", pos)
 
     return res
+end
+
+
+local function _parse_eof_packet(packet)
+    local pos = 2
+
+    local warning_count, pos = _from_little_endian(packet, pos, pos + 2 - 1)
+    local status_flags = _from_little_endian(packet, pos, pos + 2 - 1)
+
+    return warning_count, status_flags
 end
 
 
@@ -563,8 +575,12 @@ function set_keepalive(self, ...)
         return nil, "not initialized"
     end
 
-    self.state = nil
+    if self.state ~= STATE_CONNECTED then
+        return nil, "cannot be reused in the current connection state: "
+                    .. (self.state or "nil")
+    end
 
+    self.state = nil
     return sock:setkeepalive(...)
 end
 
@@ -647,9 +663,13 @@ function read_result(self)
     end
 
     if typ == 'OK' then
-        self.state = STATE_CONNECTED
+        local res = _parse_ok_packet(packet)
+        if res and band(res.server_status, SERVER_MORE_RESULTS_EXISTS) ~= 0 then
+            return res, "again"
+        end
 
-        return _parse_ok_packet(packet)
+        self.state = STATE_CONNECTED
+        return res
     end
 
     if typ ~= 'DATA' then
@@ -698,7 +718,14 @@ function read_result(self)
         end
 
         if typ == 'EOF' then
-            -- TODO: multi result set support
+            local warning_count, status_flags = _parse_eof_packet(packet)
+
+            --print("status flags: ", status_flags)
+
+            if band(status_flags, SERVER_MORE_RESULTS_EXISTS) ~= 0 then
+                return rows, "again"
+            end
+
             break
         end
 
