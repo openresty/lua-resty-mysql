@@ -59,13 +59,17 @@ Synopsis
 
                 ngx.say("connected to mysql.")
 
-                local res, err, errno, sqlstate = db:query("drop table if exists cats")
+                local res, err, errno, sqlstate =
+                    db:query("drop table if exists cats")
                 if not res then
                     ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                     return
                 end
 
-                res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(5))")
+                res, err, errno, sqlstate =
+                    db:query("create table cats "
+                             .. "(id serial primary key, "
+                             .. "name varchar(5))")
                 if not res then
                     ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                     return
@@ -73,7 +77,9 @@ Synopsis
 
                 ngx.say("table cats created.")
 
-                res, err, errno, sqlstate = db:query("insert into cats (name) value (\'Bob\'),(\'\'),(null)")
+                res, err, errno, sqlstate =
+                    db:query("insert into cats (name) "
+                             .. "values (\'Bob\'),(\'\'),(null)")
                 if not res then
                     ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                     return
@@ -81,7 +87,8 @@ Synopsis
 
                 ngx.say(res.affected_rows, " rows inserted into table cats (last id: ", res.insert_id, ")")
 
-                res, err, errno, sqlstate = db:query("select * from cats order by id asc")
+                res, err, errno, sqlstate =
+                    db:query("select * from cats order by id asc")
                 if not res then
                     ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                     return
@@ -92,7 +99,11 @@ Synopsis
 
                 -- put it into the connection pool of size 100,
                 -- with 0 idle timeout
-                db:set_keepalive(0, 100)
+                local ok, err = db:set_keepalive(0, 100)
+                if not ok then
+                    ngx.say("failed to set keepalive: ", err)
+                    return
+                end
 
                 -- or just close the connection right away:
                 -- local ok, err = db:close()
