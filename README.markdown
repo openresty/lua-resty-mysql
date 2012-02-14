@@ -278,6 +278,7 @@ See Also
 ========
 * the ngx_lua module: http://wiki.nginx.org/HttpLuaModule
 * the MySQL wired protocol specification: http://forge.mysql.com/wiki/MySQL_Internals_ClientServer_Protocol
-* the lua-resty-memcached library: https://github.com/agentzh/lua-resty-memcached
-* the lua-resty-redis library: https://github.com/agentzh/lua-resty-redis
+* the [lua-resty-memcached](https://github.com/agentzh/lua-resty-memcached) library
+* the [lua-resty-redis](https://github.com/agentzh/lua-resty-redis) library
+* the ngx_drizzle module: http://wiki.nginx.org/HttpDrizzleModule
 
