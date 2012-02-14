@@ -17,6 +17,7 @@ our $HttpConfig = qq{
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
 $ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
 $ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
+$ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
 no_long_string();
 no_shuffle();
@@ -818,6 +819,62 @@ GET /t
 ^connected to mysql: [02]
 connected to mysql: [13]
 result: \[{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}\], err:nil$
+--- no_error_log
+[error]
+
+
+
+=== TEST 13: send query w/o result set (unix domain socket)
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                path = "$TEST_NGINX_MYSQL_PATH",
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            ngx.say("connected to mysql ", db:server_ver(), ".")
+
+            local bytes, err = db:send_query("drop table if exists cats")
+            if not bytes then
+                ngx.say("failed to send query: ", err)
+            end
+
+            ngx.say("sent ", bytes, " bytes.")
+
+            local res, err, errno, sqlstate = db:read_result()
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+            end
+
+            local cjson = require "cjson"
+            ngx.say("result: ", cjson.encode(res))
+
+            local ok, err = db:close()
+            if not ok then
+                ngx.say("failed to close: ", err)
+                return
+            end
+        ';
+    }
+--- request
+GET /t
+--- response_body_like chop
+^connected to mysql \d\.\S+\.
+sent 30 bytes\.
+result: (?:{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0}|{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]})$
 --- no_error_log
 [error]
 

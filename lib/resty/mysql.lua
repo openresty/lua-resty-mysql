@@ -434,7 +434,7 @@ function connect(self, opts)
             return nil, 'enither "host" nor "path" options are specified'
         end
 
-        ok, err = sock:connect(opts.path)
+        ok, err = sock:connect("unix:" .. opts.path)
     end
 
     if not ok then
