@@ -54,12 +54,13 @@ converters[0x0d] = tonumber  -- year
 local function _from_little_endian(data, i, j)
     local res = 0
     local n = 0
-    for k = j, i, -1 do
-        if n > 0 then
-            res = lshift(res, n * 8)
+    for k = i, j do
+        local byte = strbyte(data, k)
+        if n > 0 and byte > 0 then
+            byte = lshift(byte, n * 8)
         end
         -- print("byte: ", strbyte(data, k))
-        res = bor(res, strbyte(data, k))
+        res = bor(res, byte)
         n = n + 1
     end
     return res, j + 1
@@ -418,7 +419,7 @@ function connect(self, opts)
 
     local max_packet_size = opts.max_packet_size
     if not max_packet_size then
-        max_packet_size = 1024 * 100
+        max_packet_size = 1024 * 1024 -- default 1 MB
     end
     self._max_packet_size = max_packet_size
 

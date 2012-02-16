@@ -19,6 +19,8 @@ $ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
 $ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
 $ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
+log_level 'warn';
+
 no_long_string();
 no_shuffle();
 
@@ -71,7 +73,7 @@ failed to connect: Access denied for user 'user_not_found'@'localhost' (using pa
             db:set_timeout(1000) -- 1 sec
 
             local ok, err, errno, sqlstate = db:connect({
-                host = "host-not-found",
+                host = "host-not-found.org",
                 port = $TEST_NGINX_MYSQL_PORT,
                 database = "ngx_test",
                 user = "ngx_test",
@@ -87,10 +89,11 @@ failed to connect: Access denied for user 'user_not_found'@'localhost' (using pa
     }
 --- request
 GET /t
---- response_body
-failed to connect: failed to connect: host-not-found could not be resolved (3: Host not found): nil nil
+--- response_body_like chop
+^failed to connect: failed to connect: host-not-found.org could not be resolved(?: \(3: Host not found\))?: nil nil$
 --- no_error_log
 [error]
+--- timeout: 5
 
 
 
@@ -494,6 +497,7 @@ result: [{"id":1,"hah":256,"kah":65535,"lah":579,"haha":1998,"bah":3.14,"blah":5
 result: [{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":null,"baz":null,"bar":null},{"id":1,"hah":256,"kah":65535,"lah":579,"haha":1998,"bah":3.14,"blah":5.16,"baz":4,"bar":3}]
 --- no_error_log
 [error]
+--- timeout: 5
 
 
 

@@ -140,7 +140,7 @@ The `options` argument is a Lua table holding the following keys:
 * path: the path of the unix socket file listened by the MySQL server.
 * user: MySQL account name for login.
 * password: MySQL account password for login (in clear text).
-* max_packet_size: the upper limit for the reply packets sent from the MySQL server (default to 100 KB).
+* max_packet_size: the upper limit for the reply packets sent from the MySQL server (default to 1MB).
 
 Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.
 
