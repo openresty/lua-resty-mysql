@@ -97,7 +97,11 @@ end
 
 
 local function _dump(data)
-    return concat({strbyte(data, 1, #data)}, " ")
+    local bytes = {}
+    for i = 1, #data do
+        insert(bytes, strbyte(data, i, i))
+    end
+    return concat(bytes, " ")
 end
 
 
@@ -141,6 +145,8 @@ function _send_packet(self, req, size)
         req
     }
 
+    --print("sending packet...")
+
     return sock:send(packet)
 end
 
@@ -169,11 +175,14 @@ function _recv_packet(self)
 
     local num = strbyte(data, 4)
 
-    --print("packet no: ", num)
+    --print("recv packet: packet no: ", num)
 
     self.packet_no = num
 
     data, err = sock:receive(len)
+
+    --print("receive returned")
+
     if not data then
         return nil, nil, "failed to read packet content: " .. err
     end
