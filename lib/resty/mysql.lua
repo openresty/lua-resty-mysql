@@ -737,9 +737,9 @@ function read_result(self)
             break
         end
 
-        if typ ~= 'DATA' then
-            return nil, 'bad row packet type: ' .. typ
-        end
+        -- if typ ~= 'DATA' then
+            -- return nil, 'bad row packet type: ' .. typ
+        -- end
 
         -- typ == 'DATA'
 
