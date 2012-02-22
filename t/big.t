@@ -3,8 +3,8 @@
 use Test::Nginx::Socket;
 use Cwd qw(cwd);
 
-#repeat_each(100);
-repeat_each(2);
+repeat_each(50);
+#repeat_each(10);
 
 plan tests => repeat_each() * (3 * blocks());
 
