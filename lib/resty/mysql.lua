@@ -51,28 +51,45 @@ converters[0x09] = tonumber  -- int24
 converters[0x0d] = tonumber  -- year
 
 
-local function _from_little_endian(data, i, j)
-    local res = 0
-    local n = 0
-    for k = i, j do
-        local byte = strbyte(data, k)
-        if n > 0 and byte > 0 then
-            byte = lshift(byte, n * 8)
-        end
-        -- print("byte: ", strbyte(data, k))
-        res = bor(res, byte)
-        n = n + 1
-    end
-    return res, j + 1
+local function _get_byte2(data, i)
+    local a, b = strbyte(data, i, i + 1)
+    return bor(a, lshift(b, 8)), i + 2
 end
 
 
-local function _to_little_endian(num, size)
-    local res = {}
-    for i = 0, size - 1 do
-        insert(res, band(rshift(num, i * 8), 0xff))
-    end
-    return strchar(unpack(res))
+local function _get_byte3(data, i)
+    local a, b, c = strbyte(data, i, i + 2)
+    return bor(a, lshift(b, 8), lshift(c, 16)), i + 3
+end
+
+
+local function _get_byte4(data, i)
+    local a, b, c, d = strbyte(data, i, i + 3)
+    return bor(a, lshift(b, 8), lshift(c, 16), lshift(d, 24)), i + 4
+end
+
+
+local function _get_byte8(data, i)
+    local a, b, c, d, e, f, g, h = strbyte(data, i, i + 7)
+    return bor(a, lshift(b, 8), lshift(c, 16), lshift(d, 24), lshift(e, 32),
+               lshift(f, 40), lshift(g, 48), lshift(h, 56)), i + 8
+end
+
+
+local function _set_byte2(n)
+    return strchar(band(n, 0xff), band(rshift(n, 8), 0xff))
+end
+
+
+local function _set_byte3(n)
+    return strchar(band(n, 0xff), band(rshift(n, 8), 0xff),
+        band(rshift(n, 16), 0xff))
+end
+
+
+local function _set_byte4(n)
+    return strchar(band(n, 0xff), band(rshift(n, 8), 0xff),
+        band(rshift(n, 16), 0xff), band(rshift(n, 24), 0xff))
 end
 
 
@@ -140,7 +157,7 @@ function _send_packet(self, req, size)
     --print("packet no: ", self.packet_no)
 
     local packet = {
-        _to_little_endian(size, 3),
+        _set_byte3(size),
         strchar(self.packet_no),
         req
     }
@@ -161,7 +178,7 @@ function _recv_packet(self)
 
     --print("packet header: ", _dump(data))
 
-    local len = _from_little_endian(data, 1, 3)
+    local len, pos = _get_byte3(data, 1)
 
     --print("packet length: ", len)
 
@@ -173,7 +190,7 @@ function _recv_packet(self)
         return nil, nil, "packet size too big: " .. len
     end
 
-    local num = strbyte(data, 4)
+    local num = strbyte(data, pos)
 
     --print("recv packet: packet no: ", num)
 
@@ -226,17 +243,17 @@ local function _from_length_coded_bin(data, pos)
 
     if first == 252 then
         pos = pos + 1
-        return _from_little_endian(data, pos, pos + 2 - 1), pos + 2
+        return _get_byte2(data, pos)
     end
 
     if first == 253 then
         pos = pos + 1
-        return _from_little_endian(data, pos, pos + 3 - 1), pos + 3
+        return _get_byte3(data, pos)
     end
 
     if first == 254 then
         pos = pos + 1
-        return _from_little_endian(data, pos, pos + 8 - 1), pos + 8
+        return _get_byte8(data, pos)
     end
 
     return false, pos + 1
@@ -266,11 +283,11 @@ local function _parse_ok_packet(packet)
 
     --print("insert id: ", res.insert_id, ", pos:", pos)
 
-    res.server_status, pos = _from_little_endian(packet, pos, pos + 2 - 1)
+    res.server_status, pos = _get_byte2(packet, pos)
 
     --print("server status: ", res.server_status, ", pos:", pos)
 
-    res.warning_count, pos = _from_little_endian(packet, pos, pos + 2 - 1)
+    res.warning_count, pos = _get_byte2(packet, pos)
 
     --print("warning count: ", res.warning_count, ", pos: ", pos)
 
@@ -288,15 +305,15 @@ end
 local function _parse_eof_packet(packet)
     local pos = 2
 
-    local warning_count, pos = _from_little_endian(packet, pos, pos + 2 - 1)
-    local status_flags = _from_little_endian(packet, pos, pos + 2 - 1)
+    local warning_count, pos = _get_byte2(packet, pos)
+    local status_flags = _get_byte2(packet, pos)
 
     return warning_count, status_flags
 end
 
 
 local function _parse_err_packet(packet)
-    local errno, pos = _from_little_endian(packet, 2, 2 + 2 - 1)
+    local errno, pos = _get_byte2(packet, 2)
     local marker = sub(packet, pos, pos)
     local sqlstate
     if marker == '#' then
@@ -336,14 +353,14 @@ local function _parse_field_packet(data)
 
     pos = pos + 1 -- ignore the filler
 
-    col.charsetnr, pos = _from_little_endian(data, pos, pos + 2 - 1)
+    col.charsetnr, pos = _get_byte2(data, pos)
 
-    col.length, pos = _from_little_endian(data, pos, pos + 4 - 1)
+    col.length, pos = _get_byte4(data, pos)
 
     col.type = strbyte(data, pos)
     pos = pos + 1
 
-    col.flags, pos = _from_little_endian(data, pos, pos + 2 - 1)
+    col.flags, pos = _get_byte2(data, pos)
 
     col.decimals = strbyte(data, pos)
     pos = pos + 1
@@ -481,7 +498,7 @@ function connect(self, opts)
 
     self._server_ver = server_ver
 
-    local thread_id, pos = _from_little_endian(packet, pos, pos + 4 - 1)
+    local thread_id, pos = _get_byte4(packet, pos)
 
     --print("thread id: ", thread_id)
 
@@ -493,7 +510,7 @@ function connect(self, opts)
     pos = pos + 9 -- skip filler
 
     -- two lower bytes
-    self._server_capabilities, pos = _from_little_endian(packet, pos, pos + 2 - 1)
+    self._server_capabilities, pos = _get_byte2(packet, pos)
 
     --print("server capabilities: ", self._server_capabilities)
 
@@ -502,12 +519,12 @@ function connect(self, opts)
 
     --print("server lang: ", self._server_lang)
 
-    self._server_status, pos = _from_little_endian(packet, pos, pos + 2 - 1)
+    self._server_status, pos = _get_byte2(packet, pos)
 
     --print("server status: ", self._server_status)
 
     local more_capabilities
-    more_capabilities, pos = _from_little_endian(packet, pos, pos + 2 - 1)
+    more_capabilities, pos = _get_byte2(packet, pos)
 
     self._server_capabilities = bor(self._server_capabilities, lshift(more_capabilities, 16))
 
@@ -540,9 +557,9 @@ function connect(self, opts)
     --print("token: ", _dump(token))
 
     local req = {
-        _to_little_endian(client_flags, 4),
-        _to_little_endian(self._max_packet_size, 4),
-        _to_little_endian(0, 1),
+        _set_byte4(client_flags),
+        _set_byte4(self._max_packet_size),
+        "\0", -- TODO: add support for charset encoding
         strrep("\0", 23),
         _to_cstring(user),
         _to_binary_coded_string(token),
