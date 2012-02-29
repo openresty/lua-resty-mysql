@@ -2,6 +2,7 @@
 
 module("resty.mysql", package.seeall)
 
+_VERSION = '0.06'
 
 local bit = require "bit"
 
