@@ -19,7 +19,7 @@ $ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
 $ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
 $ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
-log_level 'warn';
+#log_level 'warn';
 
 no_long_string();
 no_shuffle();
@@ -538,7 +538,7 @@ result: [{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":
             ngx.say("result: ", cjson.encode(res), ", err:", err)
 
             res, err, errno, sqlstate =
-                db:query("select * from cats order by id asc")
+                db:query("select * from foo order by id asc")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
             else
@@ -553,7 +553,7 @@ result: [{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":
             end
 
             res, err, errno, sqlstate =
-                db:query("select * from cats order by id asc")
+                db:query("select * from foo order by id asc")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
             else
