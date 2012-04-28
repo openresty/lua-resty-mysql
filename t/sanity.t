@@ -12,6 +12,7 @@ my $pwd = cwd();
 our $HttpConfig = qq{
     resolver \$TEST_NGINX_RESOLVER;
     lua_package_path "$pwd/lib/?.lua;;";
+    lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
 };
 
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
