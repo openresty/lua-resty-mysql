@@ -1,6 +1,13 @@
 # vim:set ft= ts=4 sw=4 et:
 
-use Test::Nginx::Socket;
+my @skip;
+BEGIN {
+    if ($ENV{LD_PRELOAD} =~ /\bmockeagain\.so\b/) {
+        @skip = (skip_all => 'too slow in mockeagain mode')
+    }
+}
+
+use Test::Nginx::Socket @skip;
 use Cwd qw(cwd);
 
 repeat_each(50);
