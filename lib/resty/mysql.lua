@@ -457,9 +457,19 @@ function connect(self, opts)
 
     local ok, err
 
+    local database = opts.database or ""
+    local user = opts.user or ""
+
+    local pool = opts.pool
+
     local host = opts.host
     if host then
-        ok, err = sock:connect(host, opts.port or '3306')
+        local port = opts.port or 3306
+        if not pool then
+            pool = concat({user, database, host, port}, ":")
+        end
+
+        ok, err = sock:connect(host, port, { pool = pool })
 
     else
         local path = opts.path
@@ -467,7 +477,11 @@ function connect(self, opts)
             return nil, 'neither "host" nor "path" options are specified'
         end
 
-        ok, err = sock:connect("unix:" .. opts.path)
+        if not pool then
+            pool = concat({user, database, path}, ":")
+        end
+
+        ok, err = sock:connect("unix:" .. path, { pool = pool })
     end
 
     if not ok then
@@ -532,7 +546,8 @@ function connect(self, opts)
     local more_capabilities
     more_capabilities, pos = _get_byte2(packet, pos)
 
-    self._server_capabilities = bor(self._server_capabilities, lshift(more_capabilities, 16))
+    self._server_capabilities = bor(self._server_capabilities,
+                                    lshift(more_capabilities, 16))
 
     --print("server capabilities: ", self._server_capabilities)
 
@@ -552,8 +567,6 @@ function connect(self, opts)
     --print("scramble: ", _dump(scramble))
 
     local password = opts.password or ""
-    local database = opts.database or ""
-    local user = opts.user or ""
 
     local token = _compute_token(password, scramble)
 
@@ -654,7 +667,8 @@ end
 
 function send_query(self, query)
     if self.state ~= STATE_CONNECTED then
-        return nil, "cannot send query in the current context: " .. (self.state or "nil")
+        return nil, "cannot send query in the current context: "
+                    .. (self.state or "nil")
     end
 
     local sock = self.sock
