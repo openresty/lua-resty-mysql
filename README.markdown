@@ -6,9 +6,7 @@ lua-resty-mysql - Lua MySQL client driver for ngx_lua based on the cosocket API
 Status
 ======
 
-This library is considered experimental and still under active development.
-
-The API is still in flux and may change without notice.
+This library is considered production ready.
 
 Description
 ===========
@@ -20,7 +18,7 @@ http://wiki.nginx.org/HttpLuaModule
 This Lua library takes advantage of ngx_lua's cosocket API, which ensures
 100% nonblocking behavior.
 
-Note that at least [ngx_lua 0.5.0rc6](https://github.com/chaoslawful/lua-nginx-module/tags) or [ngx_openresty 1.0.11.9](http://openresty.org/#Download) is required.
+Note that at least [ngx_lua 0.5.0rc29](https://github.com/chaoslawful/lua-nginx-module/tags) or [ngx_openresty 1.0.15.7](http://openresty.org/#Download) is required.
 
 Also, the [bit library](http://bitop.luajit.org/) is also required. If you're using LuaJIT 2.0 with ngx_lua, then the `bit` library is already available by default.
 
@@ -138,9 +136,11 @@ The `options` argument is a Lua table holding the following keys:
 * host: the host name for the MySQL server.
 * port: the port that the MySQL server is listening on. Default to 3306.
 * path: the path of the unix socket file listened by the MySQL server.
+* database: the MySQL database name.
 * user: MySQL account name for login.
 * password: MySQL account password for login (in clear text).
 * max_packet_size: the upper limit for the reply packets sent from the MySQL server (default to 1MB).
+* pool: the name for the MySQL connection pool. if omitted, an ambiguous pool name will be generated automatically with the string template `user:database:host:port` or `user:database:path`. (this option was first introduced in `v0.08`.)
 
 Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.
 
@@ -162,7 +162,7 @@ In case of success, returns `1`. In case of errors, returns `nil` with a string 
 
 get_reused_times
 ----------------
-`syntax: db:set_keepalive(max_idle_timeout, pool_size)`
+`syntax: times, err = db:get_reused_times()`
 
 This method returns the (successfully) reused times for the current connection. In case of error, it returns `nil` and a string describing the error.
 
@@ -211,7 +211,7 @@ For queries that do not correspond to a result set, it returns a Lua table like 
         message = nil
     }
 
-If more results are following the current result, a second `err` return value will be given the string `again`. One should always check this (second) return value and if it is `again`, then she should call this method again to retrieve more results. This usually happens when the original query contains multiple statements (separated by semicolon in the same query string).
+If more results are following the current result, a second `err` return value will be given the string `again`. One should always check this (second) return value and if it is `again`, then she should call this method again to retrieve more results. This usually happens when the original query contains multiple statements (separated by semicolon in the same query string) or calling a MySQL procedure.
 
 In case of errors, this method returns at most 4 values: `nil`, `err`, `errcode`, and `sqlstate`. The `err` return value contains a string describing the error, the `errcode` return value holds the MySQL error code (a numerical value), and finally, the `sqlstate` return value contains the standard SQL error code that consists of 5 characters. Note that, the `errcode` and `sqlstate` might be `nil` if MySQL does not return them.
 
@@ -242,6 +242,21 @@ It is usually convenient to use the [lua-cjson](http://www.kyne.com.au/~mark/sof
     if res then
         print("res: ", cjson.encode(res))
     end
+
+Limitations
+===========
+
+* This library cannot be used in code contexts like set_by_lua*, log_by_lua*, and
+header_filter_by_lua* where the ngx_lua cosocket API is not available.
+* The `resty.mysql` object instance cannot be stored in a Lua variable at the Lua module level,
+because it will then be shared by all the concurrent requests handled by the same nginx
+ worker process (see
+http://wiki.nginx.org/HttpLuaModule#Data_Sharing_within_an_Nginx_Worker ) and
+result in bad race conditions when concurrent requests are trying to use the same `resty.mysql` instance.
+You should always initiate `resty.mysql` objects in function local
+variables or in the `ngx.ctx` table. These places all have their own data copies for
+each request.
+
 
 TODO
 ====

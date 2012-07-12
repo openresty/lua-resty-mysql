@@ -1,6 +1,13 @@
 # vim:set ft= ts=4 sw=4 et:
 
-use Test::Nginx::Socket;
+my @skip;
+BEGIN {
+    if ($ENV{LD_PRELOAD} =~ /\bmockeagain\.so\b/) {
+        @skip = (skip_all => 'too slow in mockeagain mode')
+    }
+}
+
+use Test::Nginx::Socket @skip;
 use Cwd qw(cwd);
 
 repeat_each(50);
@@ -13,6 +20,7 @@ my $pwd = cwd();
 our $HttpConfig = qq{
     resolver \$TEST_NGINX_RESOLVER;
     lua_package_path "$pwd/lib/?.lua;;";
+    lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
 };
 
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
@@ -22,8 +30,8 @@ $ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
 #log_level 'warn';
 
-no_long_string();
-no_diff();
+#no_long_string();
+#no_diff();
 no_shuffle();
 
 run_tests();

@@ -5,13 +5,14 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (3 * blocks());
+plan tests => repeat_each() * (3 * blocks() + 3);
 
 my $pwd = cwd();
 
 our $HttpConfig = qq{
     resolver \$TEST_NGINX_RESOLVER;
     lua_package_path "$pwd/lib/?.lua;;";
+    lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
 };
 
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
@@ -19,7 +20,7 @@ $ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
 $ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
 $ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
-log_level 'warn';
+#log_level 'warn';
 
 no_long_string();
 no_shuffle();
@@ -538,7 +539,7 @@ result: [{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":
             ngx.say("result: ", cjson.encode(res), ", err:", err)
 
             res, err, errno, sqlstate =
-                db:query("select * from cats order by id asc")
+                db:query("select * from foo order by id asc")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
             else
@@ -553,7 +554,7 @@ result: [{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":
             end
 
             res, err, errno, sqlstate =
-                db:query("select * from cats order by id asc")
+                db:query("select * from foo order by id asc")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
             else
@@ -760,7 +761,7 @@ failed to set keepalive: cannot be reused in the current connection state: 2
 
 
 
-=== TEST 12: set keepalive
+=== TEST 12: set keepalive (tcp)
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -825,6 +826,9 @@ connected to mysql: [13]
 result: \[{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}\], err:nil$
 --- no_error_log
 [error]
+--- error_log eval
+qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^\s:]+:\d+"/
+--- log_level: debug
 
 
 
@@ -968,4 +972,145 @@ result: [{"name":"Bob"},{"name":""},{"name":null}]
 result: [{"name":null},{"name":""},{"name":"Bob"}]
 --- no_error_log
 [error]
+
+
+
+=== TEST 15: set keepalive (uds)
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            local cjson = require "cjson"
+
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                path = "$TEST_NGINX_MYSQL_PATH",
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            ngx.say("connected to mysql: ", db:get_reused_times())
+
+            local ok, err = db:set_keepalive()
+            if not ok then
+                ngx.say("failed to set keepalive: ", err)
+                return
+            end
+
+            ok, err, errno, sqlstate = db:connect({
+                path = "$TEST_NGINX_MYSQL_PATH",
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            ngx.say("connected to mysql: ", db:get_reused_times())
+
+            res, err, errno, sqlstate =
+                db:query("select * from cats order by id asc;")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("result: ", cjson.encode(res), ", err:", err)
+
+            local ok, err = db:set_keepalive()
+            if not ok then
+                ngx.say("failed to set keepalive: ", err)
+                return
+            end
+        ';
+    }
+--- request
+GET /t
+--- response_body_like chop
+^connected to mysql: [02]
+connected to mysql: [13]
+result: \[{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}\], err:nil$
+--- no_error_log
+[error]
+--- error_log eval
+qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^\s:]+"/
+--- log_level: debug
+
+
+
+=== TEST 16: set keepalive (explicit pool name)
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            local cjson = require "cjson"
+
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                path = "$TEST_NGINX_MYSQL_PATH",
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test",
+                pool = "my_pool"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            ngx.say("connected to mysql: ", db:get_reused_times())
+
+            local ok, err = db:set_keepalive()
+            if not ok then
+                ngx.say("failed to set keepalive: ", err)
+                return
+            end
+
+            ok, err, errno, sqlstate = db:connect({
+                host = "$TEST_NGINX_MYSQL_HOST",
+                port = $TEST_NGINX_MYSQL_PORT,
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test",
+                pool = "my_pool"})
+
+            ngx.say("connected to mysql: ", db:get_reused_times())
+
+            res, err, errno, sqlstate =
+                db:query("select * from cats order by id asc;")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("result: ", cjson.encode(res), ", err:", err)
+
+            local ok, err = db:set_keepalive()
+            if not ok then
+                ngx.say("failed to set keepalive: ", err)
+                return
+            end
+        ';
+    }
+--- request
+GET /t
+--- response_body_like chop
+^connected to mysql: [02]
+connected to mysql: [13]
+result: \[{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}\], err:nil$
+--- no_error_log
+[error]
+--- error_log eval
+qr/lua tcp socket keepalive create connection pool for key "my_pool"/
+--- log_level: debug
 

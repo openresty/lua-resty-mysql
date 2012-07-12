@@ -2,6 +2,7 @@
 
 module("resty.mysql", package.seeall)
 
+_VERSION = '0.07'
 
 local bit = require "bit"
 
@@ -340,24 +341,28 @@ end
 
 local function _parse_field_packet(data)
     local col = {}
+    local catalog, db, table, orig_table, orig_name, charsetnr, length
     local pos
-    col.catalog, pos = _from_length_coded_str(data, 1)
+    catalog, pos = _from_length_coded_str(data, 1)
 
     --print("catalog: ", col.catalog, ", pos:", pos)
 
-    col.db, pos = _from_length_coded_str(data, pos)
-    col.table, pos = _from_length_coded_str(data, pos)
-    col.org_table, pos = _from_length_coded_str(data, pos)
+    db, pos = _from_length_coded_str(data, pos)
+    table, pos = _from_length_coded_str(data, pos)
+    orig_table, pos = _from_length_coded_str(data, pos)
     col.name, pos = _from_length_coded_str(data, pos)
-    col.org_name, pos = _from_length_coded_str(data, pos)
+
+    orig_name, pos = _from_length_coded_str(data, pos)
 
     pos = pos + 1 -- ignore the filler
 
-    col.charsetnr, pos = _get_byte2(data, pos)
+    charsetnr, pos = _get_byte2(data, pos)
 
-    col.length, pos = _get_byte4(data, pos)
+    length, pos = _get_byte4(data, pos)
 
     col.type = strbyte(data, pos)
+
+    --[[
     pos = pos + 1
 
     col.flags, pos = _get_byte2(data, pos)
@@ -369,6 +374,7 @@ local function _parse_field_packet(data)
     if default and default ~= "" then
         col.default = default
     end
+    --]]
 
     return col
 end
@@ -451,17 +457,31 @@ function connect(self, opts)
 
     local ok, err
 
+    local database = opts.database or ""
+    local user = opts.user or ""
+
+    local pool = opts.pool
+
     local host = opts.host
     if host then
-        ok, err = sock:connect(host, opts.port or '3306')
+        local port = opts.port or 3306
+        if not pool then
+            pool = concat({user, database, host, port}, ":")
+        end
+
+        ok, err = sock:connect(host, port, { pool = pool })
 
     else
         local path = opts.path
         if not path then
-            return nil, 'enither "host" nor "path" options are specified'
+            return nil, 'neither "host" nor "path" options are specified'
         end
 
-        ok, err = sock:connect("unix:" .. opts.path)
+        if not pool then
+            pool = concat({user, database, path}, ":")
+        end
+
+        ok, err = sock:connect("unix:" .. path, { pool = pool })
     end
 
     if not ok then
@@ -526,7 +546,8 @@ function connect(self, opts)
     local more_capabilities
     more_capabilities, pos = _get_byte2(packet, pos)
 
-    self._server_capabilities = bor(self._server_capabilities, lshift(more_capabilities, 16))
+    self._server_capabilities = bor(self._server_capabilities,
+                                    lshift(more_capabilities, 16))
 
     --print("server capabilities: ", self._server_capabilities)
 
@@ -546,8 +567,6 @@ function connect(self, opts)
     --print("scramble: ", _dump(scramble))
 
     local password = opts.password or ""
-    local database = opts.database or ""
-    local user = opts.user or ""
 
     local token = _compute_token(password, scramble)
 
@@ -648,7 +667,8 @@ end
 
 function send_query(self, query)
     if self.state ~= STATE_CONNECTED then
-        return nil, "cannot send query in the current context: " .. (self.state or "nil")
+        return nil, "cannot send query in the current context: "
+                    .. (self.state or "nil")
     end
 
     local sock = self.sock
