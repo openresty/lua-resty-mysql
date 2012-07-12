@@ -41,7 +41,7 @@ Synopsis
                 -- by a mysql server:
                 --     local ok, err, errno, sqlstate =
                 --           db:connect{
-                --              path = "unix:/path/to/mysql.sock",
+                --              path = "/path/to/mysql.sock",
                 --              database = "ngx_test",
                 --              user = "ngx_test",
                 --              password = "ngx_test" }
