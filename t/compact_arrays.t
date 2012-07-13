@@ -252,3 +252,94 @@ result: {}
 --- no_error_log
 [error]
 
+
+
+=== TEST 4: select query with an non-empty result set - set_compact_arrays
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            local cjson = require "cjson"
+
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect{
+                host = "$TEST_NGINX_MYSQL_HOST",
+                port = $TEST_NGINX_MYSQL_PORT,
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"}
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            ngx.say("connected to mysql.")
+
+            local res, err, errno, sqlstate = db:query("drop table if exists cats")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("table cats dropped.")
+
+            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(5))")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("table cats created.")
+
+            res, err, errno, sqlstate = db:query("insert into cats (name) value (\'Bob\'),(\'\'),(null)")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say(res.affected_rows, " rows inserted into table cats (last id: ", res.insert_id, ")")
+
+            db:set_compact_arrays(true)
+
+            res, err, errno, sqlstate = db:query("select name, id from cats order by id asc")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("result: ", cjson.encode(res))
+
+            db:set_compact_arrays(false)
+
+            res, err, errno, sqlstate = db:query("select name, id from cats order by id desc")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("result: ", cjson.encode(res))
+
+            local ok, err = db:close()
+            if not ok then
+                ngx.say("failed to close: ", err)
+                return
+            end
+        ';
+    }
+--- request
+GET /t
+--- response_body
+connected to mysql.
+table cats dropped.
+table cats created.
+3 rows inserted into table cats (last id: 1)
+result: [["Bob",1],["",2],[null,3]]
+result: [{"name":null,"id":3},{"name":"","id":2},{"name":"Bob","id":1}]
+--- no_error_log
+[error]
+

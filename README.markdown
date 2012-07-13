@@ -241,6 +241,14 @@ Returns the MySQL server version string, like `"5.1.64"`.
 
 You should only call this method after successfully connecting to a MySQL server, otherwise `nil` will be returned.
 
+set_compact_arrays
+------------------
+`syntax: db:set_compact_arrays(boolean)`
+
+Sets whether to use the "compact-arrays" structure for the resultsets returned by subsequent queries. See the `compact_arrays` option for the `connect` method for more details.
+
+This method was first introduced in the `v0.09` release.
+
 Debugging
 =========
 

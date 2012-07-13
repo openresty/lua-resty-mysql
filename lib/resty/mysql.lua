@@ -817,6 +817,11 @@ function query(self, query)
 end
 
 
+function set_compact_arrays(self, value)
+    self.compact = value
+end
+
+
 -- to prevent use of casual module global variables
 getmetatable(resty.mysql).__newindex = function (table, key, val)
     error('attempt to write to undeclared variable "' .. key .. '": '
