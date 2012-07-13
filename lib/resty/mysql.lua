@@ -401,7 +401,7 @@ local function _parse_row_data_packet(data, cols, compact)
         end
 
         if compact then
-            table.insert(row, value)
+            insert(row, value)
         else
             row[name] = value
         end
