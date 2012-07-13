@@ -380,7 +380,7 @@ local function _parse_field_packet(data)
 end
 
 
-local function _parse_row_data_packet(data, cols)
+local function _parse_row_data_packet(data, cols, compact)
     local row = {}
     local pos = 1
     for i = 1, #cols do
@@ -400,7 +400,11 @@ local function _parse_row_data_packet(data, cols)
             -- insert(row, value)
         end
 
-        row[name] = value
+        if compact then
+            table.insert(row, value)
+        else
+            row[name] = value
+        end
     end
 
     return row
@@ -456,6 +460,8 @@ function connect(self, opts)
     self._max_packet_size = max_packet_size
 
     local ok, err
+
+    self.compact = opts.compact_arrays
 
     local database = opts.database or ""
     local user = opts.user or ""
@@ -762,6 +768,8 @@ function read_result(self)
 
     -- typ == 'EOF'
 
+    local compact = self.compact
+
     local rows = {}
     while true do
         --print("reading a row")
@@ -789,7 +797,7 @@ function read_result(self)
 
         -- typ == 'DATA'
 
-        local row = _parse_row_data_packet(packet, cols)
+        local row = _parse_row_data_packet(packet, cols, compact)
         insert(rows, row)
     end
 

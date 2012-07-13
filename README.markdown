@@ -133,14 +133,24 @@ Attempts to connect to the remote MySQL server.
 
 The `options` argument is a Lua table holding the following keys:
 
-* host: the host name for the MySQL server.
-* port: the port that the MySQL server is listening on. Default to 3306.
-* path: the path of the unix socket file listened by the MySQL server.
-* database: the MySQL database name.
-* user: MySQL account name for login.
-* password: MySQL account password for login (in clear text).
-* max_packet_size: the upper limit for the reply packets sent from the MySQL server (default to 1MB).
-* pool: the name for the MySQL connection pool. if omitted, an ambiguous pool name will be generated automatically with the string template `user:database:host:port` or `user:database:path`. (this option was first introduced in `v0.08`.)
+* `host`
+: the host name for the MySQL server.
+* `port`
+: the port that the MySQL server is listening on. Default to 3306.
+* `path`
+: the path of the unix socket file listened by the MySQL server.
+* `database`
+: the MySQL database name.
+* `user`
+: MySQL account name for login.
+* `password`
+: MySQL account password for login (in clear text).
+* `max_packet_size`
+: the upper limit for the reply packets sent from the MySQL server (default to 1MB).
+* `pool`
+: the name for the MySQL connection pool. if omitted, an ambiguous pool name will be generated automatically with the string template `user:database:host:port` or `user:database:path`. (this option was first introduced in `v0.08`.)
+* `compact_arrays`
+: when this option is set to true, then the `query` and `read_result` methods will return the array-of-arrays structure for the resultset, rather than the default array-of-hashes structure.
 
 Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.
 
