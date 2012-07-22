@@ -168,8 +168,8 @@ connected to mysql.
 table cats dropped.
 table cats created.
 3 rows inserted into table cats (last id: 1)
-result: [["Bob",1],["",2],[null,3]]
-result: [[null,3],["",2],["Bob",1]]
+result: [["Bob","1"],["","2"],[null,"3"]]
+result: [[null,"3"],["","2"],["Bob","1"]]
 --- no_error_log
 [error]
 
@@ -338,8 +338,8 @@ connected to mysql.
 table cats dropped.
 table cats created.
 3 rows inserted into table cats (last id: 1)
-result: [["Bob",1],["",2],[null,3]]
-result: [{"name":null,"id":3},{"name":"","id":2},{"name":"Bob","id":1}]
+result: [["Bob","1"],["","2"],[null,"3"]]
+result: [{"name":null,"id":"3"},{"name":"","id":"2"},{"name":"Bob","id":"1"}]
 --- no_error_log
 [error]
 

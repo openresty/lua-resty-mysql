@@ -122,9 +122,9 @@ table cats dropped.
 table cats created.
 1 rows inserted into table cats (last id: 1)
 result: [{"name":"' . ('B' x 1024)
-   . '","id":1}]' . "\n" .
+   . '","id":"1"}]' . "\n" .
 'result: [{"name":"' . ('B' x 1024)
-   . '","id":1}]' . "\n"
+   . '","id":"1"}]' . "\n"
 --- no_error_log
 [error]
 

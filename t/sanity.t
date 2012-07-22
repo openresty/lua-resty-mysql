@@ -329,8 +329,8 @@ connected to mysql.
 table cats dropped.
 table cats created.
 3 rows inserted into table cats (last id: 1)
-result: [{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}]
-result: [{"name":null,"id":3},{"name":"","id":2},{"name":"Bob","id":1}]
+result: [{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}]
+result: [{"name":null,"id":"3"},{"name":"","id":"2"},{"name":"Bob","id":"1"}]
 --- no_error_log
 [error]
 
@@ -494,8 +494,8 @@ connected to mysql.
 table foo dropped.
 table foo created.
 2 rows inserted into table foo (last id: 1)
-result: [{"id":1,"hah":256,"kah":65535,"lah":579,"haha":1998,"bah":3.14,"blah":5.16,"baz":4,"bar":3},{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":null,"baz":null,"bar":null}]
-result: [{"id":2,"hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":null,"baz":null,"bar":null},{"id":1,"hah":256,"kah":65535,"lah":579,"haha":1998,"bah":3.14,"blah":5.16,"baz":4,"bar":3}]
+result: [{"id":"1","hah":256,"kah":"65535","lah":579,"haha":1998,"bah":3.14,"blah":5.16,"baz":4,"bar":3},{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":null,"baz":null,"bar":null}]
+result: [{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":null,"baz":null,"bar":null},{"id":"1","hah":256,"kah":"65535","lah":579,"haha":1998,"bah":3.14,"blah":5.16,"baz":4,"bar":3}]
 --- no_error_log
 [error]
 --- timeout: 5
@@ -668,8 +668,8 @@ connected to mysql.
 table cats dropped.
 table cats created.
 3 rows inserted into table cats (last id: 1)
-result: [{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}], err:again
-result: [{"name":null,"id":3},{"name":"","id":2},{"name":"Bob","id":1}], err:nil
+result: [{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}], err:again
+result: [{"name":null,"id":"3"},{"name":"","id":"2"},{"name":"Bob","id":"1"}], err:nil
 --- no_error_log
 [error]
 
@@ -754,7 +754,7 @@ connected to mysql.
 table cats dropped.
 table cats created.
 3 rows inserted into table cats (last id: 1)
-result: [{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}], err:again
+result: [{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}], err:again
 failed to set keepalive: cannot be reused in the current connection state: 2
 --- no_error_log
 [error]
@@ -823,7 +823,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}\], err:nil$
+result: \[{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
@@ -1035,7 +1035,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}\], err:nil$
+result: \[{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
@@ -1107,7 +1107,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"name":"Bob","id":1},{"name":"","id":2},{"name":null,"id":3}\], err:nil$
+result: \[{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
