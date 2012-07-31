@@ -94,7 +94,7 @@ GET /t
 ^failed to connect: failed to connect: host-not-found.org could not be resolved(?: \(3: Host not found\))?: nil nil$
 --- no_error_log
 [error]
---- timeout: 5
+--- timeout: 7
 
 
 

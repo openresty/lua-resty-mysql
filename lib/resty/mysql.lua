@@ -16,10 +16,11 @@ local COM_QUERY = 0x03
 
 local SERVER_MORE_RESULTS_EXISTS = 8
 
+local class = resty.mysql
 
 -- global variables
 
-local mt = { __index = resty.mysql }
+local mt = { __index = class }
 
 local sub = string.sub
 local tcp = ngx.socket.tcp
@@ -827,7 +828,7 @@ end
 
 
 -- to prevent use of casual module global variables
-getmetatable(resty.mysql).__newindex = function (table, key, val)
+getmetatable(class).__newindex = function (table, key, val)
     error('attempt to write to undeclared variable "' .. key .. '": '
             .. debug.traceback())
 end
