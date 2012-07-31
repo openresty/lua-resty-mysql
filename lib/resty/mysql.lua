@@ -433,7 +433,11 @@ end
 
 
 function new(self)
-    return setmetatable({ sock = tcp() }, mt)
+    local sock, err = tcp()
+    if not sock then
+        return nil, err
+    end
+    return setmetatable({ sock = sock }, mt)
 end
 
 

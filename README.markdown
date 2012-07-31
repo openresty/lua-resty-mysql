@@ -31,7 +31,11 @@ Synopsis
         location /test {
             content_by_lua '
                 local mysql = require "resty.mysql"
-                local db = mysql:new()
+                local db, err = mysql:new()
+                if not db then
+                    ngx.say("failed to instantiate mysql: ", err)
+                    return
+                end
 
                 db:set_timeout(1000) -- 1 sec
 
@@ -121,9 +125,9 @@ Methods
 
 new
 ---
-`syntax: db = mysql:new()`
+`syntax: db, err = mysql:new()`
 
-Creates a MySQL connection object. Returns `nil` on error.
+Creates a MySQL connection object. In case of failures, returns `nil` and a string describing the error.
 
 connect
 -------
