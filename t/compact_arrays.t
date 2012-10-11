@@ -37,7 +37,7 @@ __DATA__
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(2000) -- 2 sec
 
             local ok, err, errno, sqlstate = db:connect{
                 compact_arrays = true,
