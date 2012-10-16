@@ -829,7 +829,6 @@ end
 
 -- to prevent use of casual module global variables
 getmetatable(class).__newindex = function (table, key, val)
-    error('attempt to write to undeclared variable "' .. key .. '": '
-            .. debug.traceback())
+    error('attempt to write to undeclared variable "' .. key .. '"')
 end
 
