@@ -1,4 +1,4 @@
--- Copyright (C) 2012 Zhang "agentzh" Yichun (章亦春)
+-- Copyright (C) 2012 Yichun Zhang (agentzh)
 
 
 local bit = require "bit"
