@@ -1,27 +1,7 @@
 -- Copyright (C) 2012 Zhang "agentzh" Yichun (章亦春)
 
-module("resty.mysql", package.seeall)
-
-_VERSION = '0.10'
 
 local bit = require "bit"
-
-
--- constants
-
-local STATE_CONNECTED = 1
-local STATE_COMMAND_SENT = 2
-
-local COM_QUERY = 0x03
-
-local SERVER_MORE_RESULTS_EXISTS = 8
-
-local class = resty.mysql
-
--- global variables
-
-local mt = { __index = class }
-
 local sub = string.sub
 local tcp = ngx.socket.tcp
 local insert = table.insert
@@ -39,6 +19,28 @@ local rshift = bit.rshift
 local tohex = bit.tohex
 local sha1 = ngx.sha1_bin
 local concat = table.concat
+local unpack = unpack
+local setmetatable = setmetatable
+local error = error
+local tonumber = tonumber
+
+
+module(...)
+
+_VERSION = '0.10'
+
+
+-- constants
+
+local STATE_CONNECTED = 1
+local STATE_COMMAND_SENT = 2
+
+local COM_QUERY = 0x03
+
+local SERVER_MORE_RESULTS_EXISTS = 8
+
+
+local mt = { __index = _M }
 
 
 -- mysql field value type converters
@@ -676,7 +678,7 @@ function server_ver(self)
 end
 
 
-function send_query(self, query)
+local function send_query(self, query)
     if self.state ~= STATE_CONNECTED then
         return nil, "cannot send query in the current context: "
                     .. (self.state or "nil")
@@ -705,7 +707,7 @@ function send_query(self, query)
 end
 
 
-function read_result(self)
+local function read_result(self)
     if self.state ~= STATE_COMMAND_SENT then
         return nil, "cannot read result in the current context: " .. self.state
     end
@@ -813,12 +815,12 @@ end
 
 
 function query(self, query)
-    local bytes, err = self:send_query(query)
+    local bytes, err = send_query(self, query)
     if not bytes then
         return nil, "failed to send query: " .. err
     end
 
-    return self:read_result()
+    return read_result(self)
 end
 
 
@@ -827,8 +829,16 @@ function set_compact_arrays(self, value)
 end
 
 
--- to prevent use of casual module global variables
-getmetatable(class).__newindex = function (table, key, val)
-    error('attempt to write to undeclared variable "' .. key .. '"')
-end
+_M.send_query = send_query
+_M.read_result = read_result
+
+
+local class_mt = {
+    -- to prevent use of casual module global variables
+    __newindex = function (table, key, val)
+        error('attempt to write to undeclared variable "' .. key .. '"')
+    end
+}
+
+setmetatable(_M, class_mt)
 
