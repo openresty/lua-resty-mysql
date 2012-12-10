@@ -53,6 +53,7 @@ end
 -- converters[0x08] = tonumber  -- long long
 converters[0x09] = tonumber  -- int24
 converters[0x0d] = tonumber  -- year
+converters[0xf6] = tonumber  -- newdecimal
 
 
 local function _get_byte2(data, i)
