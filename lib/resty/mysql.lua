@@ -27,7 +27,7 @@ local tonumber = tonumber
 
 module(...)
 
-_VERSION = '0.11'
+_VERSION = '0.12'
 
 
 -- constants
