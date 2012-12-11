@@ -173,7 +173,7 @@ function _send_packet(self, req, size)
 end
 
 
-function _recv_packet(self)
+local function _recv_packet(self)
     local sock = self.sock
 
     local data, err = sock:receive(4) -- packet header
