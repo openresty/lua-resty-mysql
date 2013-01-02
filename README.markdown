@@ -281,6 +281,26 @@ You should always initiate `resty.mysql` objects in function local
 variables or in the `ngx.ctx` table. These places all have their own data copies for
 each request.
 
+Community
+=========
+
+English Mailing List
+--------------------
+
+The [openresty-en](https://groups.google.com/group/openresty-en) mailing list is for English speakers.
+
+Chinese Mailing List
+--------------------
+
+The [openresty](https://groups.google.com/group/openresty) mailing list is for Chinese speakers.
+
+Bugs and Patches
+================
+
+Please submit bug reports, wishlists, or patches by
+
+1. creating a ticket on the [GitHub Issue Tracker](http://github.com/agentzh/lua-resty-mysql/issues),
+1. or posting to the [OpenResty community](http://wiki.nginx.org/HttpLuaModule#Community).
 
 TODO
 ====
