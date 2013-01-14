@@ -255,6 +255,17 @@ Sets whether to use the "compact-arrays" structure for the resultsets returned b
 
 This method was first introduced in the `v0.09` release.
 
+SQL Literal Quoting
+===================
+
+It is always important to quote SQL literals properly to prevent SQL injection attacks. You can use the
+[ngx.quote_sql_str](http://wiki.nginx.org/HttpLuaModule#ngx.quote_sql_str) function provided by ngx_lua to quote values.
+Here is an example:
+
+    local name = ngx.unescape_uri(ngx.var.arg_name)
+    local quoted_name = ngx.quote_sql_str(name)
+    local sql = "select * from users where name = " .. name
+
 Debugging
 =========
 
