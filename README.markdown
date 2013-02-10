@@ -264,7 +264,7 @@ Here is an example:
 
     local name = ngx.unescape_uri(ngx.var.arg_name)
     local quoted_name = ngx.quote_sql_str(name)
-    local sql = "select * from users where name = " .. name
+    local sql = "select * from users where name = " .. quoted_name
 
 Debugging
 =========
