@@ -10,6 +10,7 @@ local strbyte = string.byte
 local strchar = string.char
 local strfind = string.find
 local strrep = string.rep
+local strsub = string.sub
 local null = ngx.null
 local band = bit.band
 local bxor = bit.bxor
@@ -39,6 +40,7 @@ local COM_QUERY = 0x03
 
 local SERVER_MORE_RESULTS_EXISTS = 8
 
+local FULL_PACKET_SIZE = 16777215
 
 local mt = { __index = _M }
 
@@ -76,8 +78,9 @@ end
 
 local function _get_byte8(data, i)
     local a, b, c, d, e, f, g, h = strbyte(data, i, i + 7)
-    return bor(a, lshift(b, 8), lshift(c, 16), lshift(d, 24), lshift(e, 32),
-               lshift(f, 40), lshift(g, 48), lshift(h, 56)), i + 8
+    local low  = bor(a, lshift(b, 8), lshift(c, 16), lshift(d, 24)), i + 4
+    local high = bor(e, lshift(f, 8), lshift(g, 16), lshift(h, 24)), i + 4
+    return low + high * 4294967296, i + 8
 end
 
 
@@ -172,6 +175,30 @@ function _send_packet(self, req, size)
     return sock:send(packet)
 end
 
+function _recv_more_packet(self)
+    local sock = self.sock
+
+    local data, err = sock:receive(4) -- packet header
+    if not data then
+        return nil, nil, "failed to receive packet header: " .. err
+    end
+
+    local len, pos = _get_byte3(data, 1)
+
+    if len == 0 then
+        return nil, nil, "empty packet"
+    end
+
+    local num = strbyte(data, pos)
+
+    data, err = sock:receive(len)
+
+    if not data then
+        return nil, nil, "failed to read packet content: " .. err
+    end
+
+    return len, data, num
+end
 
 local function _recv_packet(self)
     local sock = self.sock
@@ -223,6 +250,24 @@ local function _recv_packet(self)
         typ = "EOF"
     elseif field_count <= 250 then
         typ = "DATA"
+    end
+
+    if len == FULL_PACKET_SIZE then
+        -- read more data
+        local datas = {}
+        insert(datas, data)
+        while true do
+            num = num + 1
+            local len, data, packet_num = _recv_more_packet(self)
+            if packet_num ~= num then
+                return nil, "receive packet number ERR"
+            end
+            insert(datas, data)
+            if len < FULL_PACKET_SIZE then
+                break
+            end
+        end
+        return concat(datas), typ
     end
 
     return data, typ
@@ -690,7 +735,46 @@ local function send_query(self, query)
         return nil, "not initialized"
     end
 
+    local query_len = strlen(query)
+    local max_packet = FULL_PACKET_SIZE - 1
+
     self.packet_no = -1
+
+    if query_len >= max_packet then
+        -- send big query
+        local bytes_all = 0
+        local pos = 1
+        local remain = query_len
+        -- first packet
+        local query_part = strsub(query, pos, pos + max_packet - 1)
+        pos = pos + max_packet
+        remain = remain - max_packet
+        local bytes, err = _send_packet(self, {strchar(COM_QUERY), query_part}, FULL_PACKET_SIZE)
+        if not bytes then
+            return nil, err
+        end
+        bytes_all = bytes_all + bytes
+        -- other full packet
+        while remain >= FULL_PACKET_SIZE do
+            query_part = strsub(query, pos, pos + FULL_PACKET_SIZE - 1)
+            pos = pos + FULL_PACKET_SIZE
+            remain = remain - FULL_PACKET_SIZE
+            local bytes, err = _send_packet(self, query_part, FULL_PACKET_SIZE)
+            if not bytes then
+                return nil, err
+            end
+            bytes_all = bytes_all + bytes
+        end
+        -- small packet
+        query_part =  strsub(query, pos)
+        local bytes, err = _send_packet(self, query_part, remain)
+        if not bytes then
+            return nil, err
+        end
+        bytes_all = bytes_all + bytes
+        self.state = STATE_COMMAND_SENT
+        return bytes_all
+    end
 
     local cmd_packet = {strchar(COM_QUERY), query}
     local packet_len = 1 + strlen(query)
