@@ -1,4 +1,5 @@
 # vim:set ft= ts=4 sw=4 et:
+# set mysqld: max-allowed-packet=200m
 
 my @skip;
 BEGIN {
