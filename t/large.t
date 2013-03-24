@@ -24,7 +24,7 @@ our $HttpConfig = qq{
 };
 
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
-$ENV{TEST_NGINX_MYSQL_PORT} ||= 3301;
+$ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
 $ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
 $ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
@@ -135,6 +135,7 @@ GET /t
 GET /t
 --- response_body
 123
+--- timeout: 10
 --- no_error_log
 [error]
 
@@ -162,14 +163,14 @@ GET /t
                 return
             end
             local create_sql = [[
-                                   CREATE TABLE `large_row_t`(id int, data1 longtext , data2 longtext);
+                                   CREATE TABLE `large_row_t`(id int, data1 longtext , data2 longtext, data3 longtext, data4 longtext, data5 longtext, data6 longtext, data7 longtext, data8 longtext, data9 longtext, data10 longtext, data11 longtext, data12 longtext,data13 longtext,data14 longtext,data15 longtext,data16 longtext,data17 longtext,data18 longtext) ENGINE=MYISAM;
                                ]]
             local drop_sql = [[
-                                 DROP TABLE `large_row_t` 
+                                 DROP TABLE `large_row_t`
                              ]]
-            local data = string.rep("a", 16777000)
+            local data = string.rep("a", 1024*1024 - 100)
             local insert_sql = "INSERT INTO `large_row_t`(id, data1) VALUES(1, \'".. data .."\')"
-            local update_sql = "UPDATE `large_row_t` SET data2=data1"
+            local update_sql = "UPDATE `large_row_t` SET data2 = data1, data3=data1, data4=data1 , data5=data1, data6=data1, data7=data1, data8=data1, data9=data1, data10=data1, data11=data1, data12=data1, data13=data1, data14=data1, data15=data1, data16=data1, data17=data1, data18=data1"
             local select_sql = "SELECT * FROM `large_row_t`"
             local res, err = db:query(create_sql)
             if not res then
