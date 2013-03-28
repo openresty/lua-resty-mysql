@@ -1215,9 +1215,9 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
             local ok, err = db:connect{
                                        host = "$TEST_NGINX_MYSQL_HOST",
                                        port = $TEST_NGINX_MYSQL_PORT,
-                                       database="test",
-                                       user="root",
-                                       password=""}
+                                       database="ngx_test",
+                                       user="ngx_test",
+                                       password="ngx_test"}
             if not ok then
                 ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
                 return

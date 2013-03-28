@@ -39,6 +39,9 @@ local COM_QUERY = 0x03
 
 local SERVER_MORE_RESULTS_EXISTS = 8
 
+-- 16MB - 1, the default max allowed packet size used by libmysqlclient
+local FULL_PACKET_SIZE = 16777215
+
 
 local mt = { __index = _M }
 
