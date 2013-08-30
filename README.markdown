@@ -29,6 +29,7 @@ Synopsis
 
     server {
         location /test {
+            default_type 'text/plain;charset=utf-8';
             content_by_lua '
                 local mysql = require "resty.mysql"
                 local db, err = mysql:new()
@@ -54,8 +55,10 @@ Synopsis
                     database = "ngx_test",
                     user = "ngx_test",
                     password = "ngx_test",
-                    max_packet_size = 1024 * 1024 }
-
+                    max_packet_size = 1024 * 1024 ,
+                    charset=utf8
+                    }
+                -- default charset is utf8 
                 if not ok then
                     ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
                     return
@@ -83,12 +86,12 @@ Synopsis
 
                 res, err, errno, sqlstate =
                     db:query("insert into cats (name) "
-                             .. "values (\'Bob\'),(\'\'),(null)")
+                             .. "values (\'Bob\'),(\'\'),(null),(\'春哥，你好\')")
                 if not res then
                     ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                     return
                 end
-
+                
                 ngx.say(res.affected_rows, " rows inserted into table cats ",
                         "(last insert id: ", res.insert_id, ")")
 
@@ -101,7 +104,16 @@ Synopsis
 
                 local cjson = require "cjson"
                 ngx.say("result: ", cjson.encode(res))
-
+                ngx.say("show mysql charsets info  ;")
+                
+                 res, err, errno, sqlstate =
+                          db:query("show variables like \'%%char%%\'")
+                if not res then
+                    ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                    return
+                end
+                ngx.say("mysql charsets info result", cjson.encode(res))
+                
                 -- put it into the connection pool of size 100,
                 -- with 0 idle timeout
                 local ok, err = db:set_keepalive(0, 100)
@@ -155,6 +167,8 @@ The `options` argument is a Lua table holding the following keys:
 : the name for the MySQL connection pool. if omitted, an ambiguous pool name will be generated automatically with the string template `user:database:host:port` or `user:database:path`. (this option was first introduced in `v0.08`.)
 * `compact_arrays`
 : when this option is set to true, then the `query` and `read_result` methods will return the array-of-arrays structure for the resultset, rather than the default array-of-hashes structure.
+* `charset`
+: the lua mysql client charset (default to utf8 )  more charset please check `SELECT id, collation_name FROM information_schema.collations ORDER BY id;`
 
 Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.
 
