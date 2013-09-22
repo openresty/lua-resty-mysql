@@ -23,8 +23,8 @@ local unpack = unpack
 local setmetatable = setmetatable
 local error = error
 local tonumber = tonumber
-
-
+local ipairs =ipairs
+local print =print
 module(...)
 
 _VERSION = '0.13'
@@ -160,9 +160,74 @@ local function _compute_token(password, scramble)
     end
 
     return strchar(unpack(bytes))
+end 
+--
+local mysql = { charset = {}};
+-- input charset name for get mysqlserver charset id 
+-- return id,errormsg
+local function _getcharset(charset)
+    --local mysql={ charset={}};
+    local cid = mysql.charset.utf8
+    if not cid then
+            print("init charset list")
+	    local charsetlist = {"armscii8_general_ci","armscii8","32",
+		 "ascii_general_ci","ascii","11",
+		 "big5_chinese_ci","big5","1",
+		 "binary","binary","63",
+		 "cp1250_general_ci","cp1250","26",
+		 "cp1251_general_ci","cp1251","51",
+		 "cp1256_general_ci","cp1256","57",
+		 "cp1257_general_ci","cp1257","59",
+		 "cp850_general_ci","cp850","4",
+		 "cp852_general_ci","cp852","40",
+		 "cp866_general_ci","cp866","36",
+		 "cp932_japanese_ci","cp932","95",
+		 "dec8_swedish_ci","dec8","3",
+		 "eucjpms_japanese_ci","eucjpms","97",
+		 "euckr_korean_ci","euckr","19",
+		 "gb2312_chinese_ci","gb2312","24",
+		 "gbk_chinese_ci","gbk","28",
+		 "geostd8_general_ci","geostd8","92",
+		 "greek_general_ci","greek","25",
+		 "hebrew_general_ci","hebrew","16",
+		 "hp8_english_ci","hp8","6",
+		 "keybcs2_general_ci","keybcs2","37",
+		 "koi8r_general_ci","koi8r","7",
+		 "koi8u_general_ci","koi8u","22",
+		 "latin1_swedish_ci","latin1","8",
+		 "latin2_general_ci","latin2","9",
+		 "latin5_turkish_ci","latin5","30",
+		 "latin7_general_ci","latin7","41",
+		 "macce_general_ci","macce","38",
+		 "macroman_general_ci","macroman","39",
+		 "sjis_japanese_ci","sjis","13",
+		 "swe7_swedish_ci","swe7","10",
+		 "tis620_thai_ci","tis620","18",
+		 "ucs2_general_ci","ucs2","35",
+		 "ujis_japanese_ci","ujis","12",
+		 "utf16_general_ci","utf16","54",
+		 "utf32_general_ci","utf32","60",
+		 "utf8_general_ci","utf8","33",
+		 "utf8mb4_general_ci","utf8mb4","45"}
+	    for i,v in ipairs(charsetlist) do
+		if i%3 == 1 then
+			local tab=charsetlist;
+			local index =i;
+			mysql.charset[tab[i+1]]=tab[index+2]
+		end
+	    end
+    end
+    -- charst 默认时 按照server 配置
+    if not charset then
+       return 0
+    end
+    local id = mysql.charset[charset]
+    print("mysql client charset is " .. charset .. " id " .. id)
+    if not id then
+        return id, "charset " .. (charset or "nil")  .. " is not supported";
+    end
+    return id;
 end
-
-
 function _send_packet(self, req, size)
     local sock = self.sock
 
@@ -597,11 +662,16 @@ function connect(self, opts)
     local client_flags = 260047;
 
     --print("token: ", _dump(token))
-
+    local _charset=opts.charset or nil
+    local _cid,err=_getcharset(_charset)
+    if not  _cid then
+        return nil, "set charset error" .. err
+    end
     local req = {
         _set_byte4(client_flags),
         _set_byte4(self._max_packet_size),
-        "\0", -- TODO: add support for charset encoding
+        --"\0", -- TODO: add support for charset encoding,
+        strchar(_cid),
         strrep("\0", 23),
         _to_cstring(user),
         _to_binary_coded_string(token),

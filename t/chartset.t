@@ -55,7 +55,9 @@ __DATA__
                 port = $TEST_NGINX_MYSQL_PORT,
                 database = "ngx_test",
                 user = "ngx_test",
-                password = "ngx_test"})
+                password = "ngx_test",
+                charset="utf8"
+             })
 
             if not ok then
                 ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
@@ -70,36 +72,8 @@ __DATA__
                 return
             end
 
-            ngx.say("table cats dropped.")
-
-            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(1024))")
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say("table cats created.")
-
-            res, err, errno, sqlstate = db:query("insert into cats (name) value (\'"
-                   .. string.rep("B", 1024)
-                   .. "\')")
-
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say(res.affected_rows, " rows inserted into table cats (last id: ", res.insert_id, ")")
-
-            res, err, errno, sqlstate = db:query("select * from cats order by id asc")
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say("result: ", cjson.encode(res))
-
-            res, err, errno, sqlstate = db:query("select * from cats order by id desc")
+             res, err, errno, sqlstate =
+                      db:query("show variables like \'%%character_set_client%%\'") 
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
@@ -118,13 +92,7 @@ __DATA__
 GET /t
 --- response_body eval
 'connected to mysql.
-table cats dropped.
-table cats created.
-1 rows inserted into table cats (last id: 1)
-result: [{"name":"' . ('B' x 1024)
-   . '","id":"1"}]' . "\n" .
-'result: [{"name":"' . ('B' x 1024)
-   . '","id":"1"}]' . "\n"
+result: [{"Value":"utf8","Variable_name":"character_set_client"}]' . "\n"
 --- no_error_log
 [error]
 
