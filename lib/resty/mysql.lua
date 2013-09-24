@@ -163,6 +163,23 @@ local function _compute_token(password, scramble)
 end 
 --
 local mysql = { charset = {}};
+-- get charsetid from mysql server
+-- @param charset mysql client charset 
+-- @param collation
+-- @param cid,errmsg
+-- @tosee http://dev.mysql.com/doc/refman/5.1/zh/sql-syntax.html#show-collation
+
+--[[
+local function _getcharsetid(self,charset, collation)
+   local charsetsql="SHOW CHARACTER SET LIKE '" .. charset.. "'";
+   local collsql="SHOW COLLATION LIKE '" .. charset .. "%'"
+   local result,errmsg=send_query(self,charsetsql);
+   if not result then 
+       return nil,  "mysqlserver don't support the charset(" .. charset .. ") " 
+   end
+   --send_query(self,charsetsql)
+end
+]]
 -- input charset name for get mysqlserver charset id 
 -- return id,errormsg
 local function _getcharset(charset)
@@ -662,22 +679,16 @@ function connect(self, opts)
     local client_flags = 260047;
 
     --print("token: ", _dump(token))
-    local _charset=opts.charset or nil
-    local _cid,err=_getcharset(_charset)
-    if not  _cid then
-        return nil, "set charset error" .. err
-    end
     local req = {
         _set_byte4(client_flags),
         _set_byte4(self._max_packet_size),
-        --"\0", -- TODO: add support for charset encoding,
-        strchar(_cid),
+        "\0", -- TODO: add support for charset encoding,
         strrep("\0", 23),
         _to_cstring(user),
         _to_binary_coded_string(token),
         _to_cstring(database)
     }
-
+    
     local packet_len = 4 + 4 + 1 + 23 + strlen(user) + 1
         + strlen(token) + 1 + strlen(database) + 1
 
@@ -708,8 +719,15 @@ function connect(self, opts)
     if typ ~= 'OK' then
         return nil, "bad packet type: " .. typ
     end
-
     self.state = STATE_CONNECTED
+    -- set charset 
+    if opts.charset then
+        send_query(self," SET NAMES '" .. opts.charset .. "'")
+        local result, msg, errno, sqlstate=  read_result(self)
+       	if not result then
+            return nil, "charset " .. opts.charset .. " is not supported" , errno, sqlstate
+        end
+    end
 
     return 1
 end
