@@ -10,7 +10,7 @@ BEGIN {
 use Test::Nginx::Socket @skip;
 use Cwd qw(cwd);
 
-repeat_each(50);
+repeat_each(1);
 #repeat_each(10);
 
 plan tests => repeat_each() * (3 * blocks());
@@ -38,7 +38,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: big field value exceeding 256
+=== TEST 1: set charset utf8 通过mysql 状态测试
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -56,7 +56,7 @@ __DATA__
                 database = "ngx_test",
                 user = "ngx_test",
                 password = "ngx_test",
-                charset="utf8"
+                charset ="utf8"
              })
 
             if not ok then
@@ -97,8 +97,7 @@ result: [{"Value":"utf8","Variable_name":"character_set_client"}]' . "\n"
 [error]
 
 
-
-=== TEST 2: big field value exceeding max packet size
+=== TEST 2: not set charset 测试向下兼容，即不输入charset ，字符依赖服务端配置
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -116,7 +115,7 @@ result: [{"Value":"utf8","Variable_name":"character_set_client"}]' . "\n"
                 database = "ngx_test",
                 user = "ngx_test",
                 password = "ngx_test",
-                max_packet_size = 1024 })
+             })
 
             if not ok then
                 ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
@@ -131,38 +130,8 @@ result: [{"Value":"utf8","Variable_name":"character_set_client"}]' . "\n"
                 return
             end
 
-            ngx.say("table cats dropped.")
-
-            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(1024))")
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say("table cats created.")
-
-            res, err, errno, sqlstate = db:query("insert into cats (name) value (\'"
-                   .. string.rep("B", 1024)
-                   .. "\')")
-
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say(res.affected_rows, " rows inserted into table cats (last id: ", res.insert_id, ")")
-
-            res, err, errno, sqlstate =
-                db:query("select * from cats order by id asc")
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say("result: ", cjson.encode(res))
-
-            res, err, errno, sqlstate =
-                db:query("select * from cats order by id desc")
+             res, err, errno, sqlstate =
+                      db:query("show variables like \'%%character_set_client%%\'") 
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
@@ -181,17 +150,13 @@ result: [{"Value":"utf8","Variable_name":"character_set_client"}]' . "\n"
 GET /t
 --- response_body eval
 'connected to mysql.
-table cats dropped.
-table cats created.
-1 rows inserted into table cats (last id: 1)
-bad result: packet size too big: 1029: nil: nil.
-'
+result: [{"Value":"latin1","Variable_name":"character_set_client"}]' . "\n"
 --- no_error_log
 [error]
 
 
 
-=== TEST 3: big field value exceeding 256 (first field in rows)
+=== TEST 3: set not supported charset 设置不支持的字符时，预期异常
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -208,10 +173,12 @@ bad result: packet size too big: 1029: nil: nil.
                 port = $TEST_NGINX_MYSQL_PORT,
                 database = "ngx_test",
                 user = "ngx_test",
-                password = "ngx_test"})
+                password = "ngx_test",
+                charset ="ut"
+             })
 
             if not ok then
-                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                ngx.say("failed to connect: ", err )
                 return
             end
 
@@ -223,36 +190,8 @@ bad result: packet size too big: 1029: nil: nil.
                 return
             end
 
-            ngx.say("table cats dropped.")
-
-            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(1024))")
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say("table cats created.")
-
-            res, err, errno, sqlstate = db:query("insert into cats (name) value (\'"
-                   .. string.rep("B", 1024)
-                   .. "\')")
-
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say(res.affected_rows, " rows inserted into table cats (last id: ", res.insert_id, ")")
-
-            res, err, errno, sqlstate = db:query("select name from cats order by id asc")
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say("result: ", cjson.encode(res))
-
-            res, err, errno, sqlstate = db:query("select name from cats order by id desc")
+             res, err, errno, sqlstate =
+                      db:query("show variables like \'%%character_set_client%%\'") 
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
@@ -270,20 +209,12 @@ bad result: packet size too big: 1029: nil: nil.
 --- request
 GET /t
 --- response_body eval
-'connected to mysql.
-table cats dropped.
-table cats created.
-1 rows inserted into table cats (last id: 1)
-result: [{"name":"' . ('B' x 1024)
-   . '"}]' . "\n" .
-'result: [{"name":"' . ('B' x 1024)
-   . '"}]' . "\n"
+'failed to connect: charset ut is not supported' . "\n"
 --- no_error_log
 [error]
 
 
-
-=== TEST 4: big field value exceeding 65536 (first field in rows)
+=== TEST 4: set utf8 ,insert chainse char 检查输入utf8 中文是否乱码
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -300,57 +231,46 @@ result: [{"name":"' . ('B' x 1024)
                 port = $TEST_NGINX_MYSQL_PORT,
                 database = "ngx_test",
                 user = "ngx_test",
-                password = "ngx_test"})
+                password = "ngx_test",
+                charset ="utf8"
+             })
 
             if not ok then
-                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                ngx.say("failed to connect: ", err )
                 return
             end
 
-            ngx.say("connected to mysql.")
+            -- ngx.say("connected to mysql.")
 
             local res, err, errno, sqlstate = db:query("drop table if exists cats")
             if not res then
+                ngx.log(ngx.ERROR,"badresult" ,errno)
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
             end
-
-            ngx.say("table cats dropped.")
-
-            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(65540))")
+             res, err, errno, sqlstate =
+                db:query("create table cats "
+                         .. "(id serial primary key, "
+                         .. "name varchar(5)) charset=utf8")
+            if not res then
+                 ngx.log(ngx.ERROR,"badresult" ,errno)
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+            res, err, errno, sqlstate =
+                db:query("insert into cats (name) "
+                         .. "values (\'你好，春哥\')")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
             end
-
-            ngx.say("table cats created.")
-
-            res, err, errno, sqlstate = db:query("insert into cats (name) value (\'"
-                   .. string.rep("B", 65540)
-                   .. "\')")
-
+            res, err, errno, sqlstate =
+                db:query("select name from cats")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
             end
-
-            ngx.say(res.affected_rows, " rows inserted into table cats (last id: ", res.insert_id, ")")
-
-            res, err, errno, sqlstate = db:query("select name from cats order by id asc")
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say("result: ", cjson.encode(res))
-
-            res, err, errno, sqlstate = db:query("select name from cats order by id desc")
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say(res[1].name)
 
             local ok, err = db:close()
             if not ok then
@@ -362,15 +282,14 @@ result: [{"name":"' . ('B' x 1024)
 --- request
 GET /t
 --- response_body eval
-'connected to mysql.
-table cats dropped.
-table cats created.
-1 rows inserted into table cats (last id: 1)
-result: [{"name":"' . ('B' x 65540)
-   . '"}]' . "\n" .
-'result: [{"name":"' . ('B' x 65540)
-   . '"}]' . "\n"
+'你好，春哥' . "\n"
 --- no_error_log
 [error]
---- timeout: 10
+
+
+
+
+
+
+
 
