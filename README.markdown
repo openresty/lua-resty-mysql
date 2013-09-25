@@ -154,7 +154,7 @@ The `options` argument is a Lua table holding the following keys:
 * `pool`
 : the name for the MySQL connection pool. if omitted, an ambiguous pool name will be generated automatically with the string template `user:database:host:port` or `user:database:path`. (this option was first introduced in `v0.08`.)
 * `compact_arrays`
-: when this option is set to true, then the `query` and `read_result` methods will return the array-of-arrays structure for the resultset, rather than the default array-of-hashes structure.
+: when this option is set to true, then the [query](#query) and [read_result](#read_result) methods will return the array-of-arrays structure for the resultset, rather than the default array-of-hashes structure.
 
 Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.
 
@@ -200,7 +200,7 @@ Sends the query to the remote MySQL server without waiting for its replies.
 
 Returns the bytes successfully sent out in success and otherwise returns `nil` and a string describing the error.
 
-You should use the `read_result` method to read the MySQL replies afterwards.
+You should use the [read_result](#read_result) method to read the MySQL replies afterwards.
 
 read_result
 -----------
@@ -235,9 +235,9 @@ query
 -----
 `syntax: res, err, errcode, sqlstate = db:query(query)`
 
-This is a shortcut for combining the `send_query` call and the first `read_result` call.
+This is a shortcut for combining the [send_query](#send_query) call and the first [read_result](#read_result) call.
 
-You should always check if the `err` return value  is `again` in case of success because this method will only call `read_result` only once for you.
+You should always check if the `err` return value  is `again` in case of success because this method will only call [read_result](#read_result) only once for you.
 
 server_ver
 ----------
@@ -265,6 +265,61 @@ Here is an example:
     local name = ngx.unescape_uri(ngx.var.arg_name)
     local quoted_name = ngx.quote_sql_str(name)
     local sql = "select * from users where name = " .. quoted_name
+
+Multi-Resultset Support
+=======================
+
+For a SQL query that produces multiple result-sets, it is always your duty to check the "again" error message returned by the [query](#query) or [read_result](#read_result) method calls, and keep pulling more result sets by calling the [read_result](#read_result) method until no "again" error message returned (or some other errors happen).
+
+Below is a trivial example for this:
+
+    local cjson = require "cjson"
+    local mysql = require "resty.mysql"
+
+    local db = mysql:new()
+    local ok, err, errno, sqlstate = db:connect({
+        host = "127.0.0.1",
+        port = 3306,
+        database = "world",
+        user = "monty",
+        password = "pass"})
+
+    if not ok then
+        ngx.log(ngx.ERR, "failed to connect: ", err, ": ", errno, " ", sqlstate)
+        return ngx.exit(500)
+    end
+
+    res, err, errno, sqlstate = db:query("select 1; select 2; select 3;")
+    if not res then
+        ngx.log(ngx.ERR, "bad result #1: ", err, ": ", errno, ": ", sqlstate, ".")
+        return ngx.exit(500)
+    end
+
+    ngx.say("result #1: ", cjson.encode(res))
+
+    local i = 2
+    while err == "again" do
+        res, err, errno, sqlstate = db:read_result()
+        if not res then
+            ngx.log(ngx.ERR, "bad result #2: ", err, ": ", errno, ": ", sqlstate, ".")
+            return ngx.exit(500)
+        end
+
+        ngx.say("result #", i, ": ", cjson.encode(res))
+        i = i + 1
+    end
+
+    local ok, err = db:set_keepalive(10000, 50)
+    if not ok then
+        ngx.log(ngx.ERR, "failed to set keepalive: ", err)
+        ngx.exit(500)
+    end
+
+This code snippet will produce the following response body data:
+
+    result #1: [{"1":"1"}]
+    result #2: [{"2":"2"}]
+    result #3: [{"3":"3"}]
 
 Debugging
 =========
