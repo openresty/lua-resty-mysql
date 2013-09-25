@@ -227,7 +227,7 @@ For queries that do not correspond to a result set, it returns a Lua table like 
         message = nil
     }
 
-If more results are following the current result, a second `err` return value will be given the string `again`. One should always check this (second) return value and if it is `again`, then she should call this method again to retrieve more results. This usually happens when the original query contains multiple statements (separated by semicolon in the same query string) or calling a MySQL procedure.
+If more results are following the current result, a second `err` return value will be given the string `again`. One should always check this (second) return value and if it is `again`, then she should call this method again to retrieve more results. This usually happens when the original query contains multiple statements (separated by semicolon in the same query string) or calling a MySQL procedure. See also [Multi-Resultset Support](#multi-resultset-support).
 
 In case of errors, this method returns at most 4 values: `nil`, `err`, `errcode`, and `sqlstate`. The `err` return value contains a string describing the error, the `errcode` return value holds the MySQL error code (a numerical value), and finally, the `sqlstate` return value contains the standard SQL error code that consists of 5 characters. Note that, the `errcode` and `sqlstate` might be `nil` if MySQL does not return them.
 
@@ -237,7 +237,7 @@ query
 
 This is a shortcut for combining the [send_query](#send_query) call and the first [read_result](#read_result) call.
 
-You should always check if the `err` return value  is `again` in case of success because this method will only call [read_result](#read_result) only once for you.
+You should always check if the `err` return value  is `again` in case of success because this method will only call [read_result](#read_result) only once for you. See also [Multi-Resultset Support](#multi-resultset-support).
 
 server_ver
 ----------
