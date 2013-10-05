@@ -25,6 +25,8 @@ Also, the [bit library](http://bitop.luajit.org/) is also required. If you're us
 Synopsis
 ========
 
+    # you do not need the following line if you are using
+    # the ngx_openresty bundle:
     lua_package_path "/path/to/lua-resty-mysql/lib/?.lua;;";
 
     server {
@@ -356,6 +358,30 @@ You should always initiate `resty.mysql` objects in function local
 variables or in the `ngx.ctx` table. These places all have their own data copies for
 each request.
 
+Installation
+============
+
+If you are using the ngx_openresty bundle (http://openresty.org ), then
+you do not need to do anything because it already includes and enables
+lua-resty-mysql by default. And you can just use it in your Lua code,
+as in
+
+    local mysql = require "resty.mysql"
+    ...
+
+If you are using your own nginx + ngx_lua build, then you need to configure
+the lua_package_path directive to add the path of your lua-resty-mysql source
+tree to ngx_lua's LUA_PATH search path, as in
+
+    # nginx.conf
+    http {
+        lua_package_path "/path/to/lua-resty-mysql/lib/?.lua;;";
+        ...
+    }
+
+Ensure that the system account running your Nginx ''worker'' proceses have
+enough permission to read the `.lua` file.
+
 Community
 =========
 
@@ -389,14 +415,14 @@ TODO
 Author
 ======
 
-Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>
+Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, CloudFlare Inc.
 
 Copyright and License
 =====================
 
 This module is licensed under the BSD license.
 
-Copyright (C) 2012, by Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>.
+Copyright (C) 2012-2013, by Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, CloudFlare Inc.
 
 All rights reserved.
 
