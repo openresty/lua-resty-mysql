@@ -4,7 +4,6 @@
 local bit = require "bit"
 local sub = string.sub
 local tcp = ngx.socket.tcp
-local insert = table.insert
 local strbyte = string.byte
 local strchar = string.char
 local strfind = string.find
@@ -88,22 +87,22 @@ end
 
 
 local function _set_byte2(n)
-    return strchar(band(n, 0xff)) .. strchar(band(rshift(n, 8), 0xff))
+    return strchar(band(n, 0xff), band(rshift(n, 8), 0xff))
 end
 
 
 local function _set_byte3(n)
-    return strchar(band(n, 0xff))
-           .. strchar(band(rshift(n, 8), 0xff))
-           .. strchar(band(rshift(n, 16), 0xff))
+    return strchar(band(n, 0xff),
+                   band(rshift(n, 8), 0xff),
+                   band(rshift(n, 16), 0xff))
 end
 
 
 local function _set_byte4(n)
-    return strchar(band(n, 0xff))
-           .. strchar(band(rshift(n, 8), 0xff))
-           .. strchar(band(rshift(n, 16), 0xff))
-           .. strchar(band(rshift(n, 24), 0xff))
+    return strchar(band(n, 0xff),
+                   band(rshift(n, 8), 0xff),
+                   band(rshift(n, 16), 0xff),
+                   band(rshift(n, 24), 0xff))
 end
 
 
@@ -129,8 +128,9 @@ end
 
 local function _dump(data)
     local bytes = {}
-    for i = 1, #data do
-        insert(bytes, strbyte(data, i, i))
+    local len = #data
+    for i = 1, len do
+        bytes[i] = strbyte(data, i)
     end
     return concat(bytes, " ")
 end
@@ -138,8 +138,9 @@ end
 
 local function _dumphex(data)
     local bytes = {}
-    for i = 1, #data do
-        insert(bytes, tohex(strbyte(data, i), 2))
+    local len = #data
+    for i = 1, len do
+        bytes[i] = tohex(strbyte(data, i), 2)
     end
     return concat(bytes, " ")
 end
@@ -154,12 +155,12 @@ local function _compute_token(password, scramble)
     local stage2 = sha1(stage1)
     local stage3 = sha1(scramble .. stage2)
     local bytes = {}
-    for i = 1, #stage1 do
-         insert(bytes,
-             bxor(strbyte(stage3, i), strbyte(stage1, i)))
+    local n = #stage1
+    for i = 1, n do
+         bytes[i] = strchar(bxor(strbyte(stage3, i), strbyte(stage1, i)))
     end
 
-    return strchar(unpack(bytes))
+    return concat(bytes)
 end
 
 
@@ -392,7 +393,8 @@ end
 local function _parse_row_data_packet(data, cols, compact)
     local row = {}
     local pos = 1
-    for i = 1, #cols do
+    local ncols = #cols
+    for i = 1, ncols do
         local value
         value, pos = _from_length_coded_str(data, pos)
         local col = cols[i]
@@ -406,11 +408,11 @@ local function _parse_row_data_packet(data, cols, compact)
             if conv then
                 value = conv(value)
             end
-            -- insert(row, value)
         end
 
         if compact then
-            insert(row, value)
+            row[i] = value
+
         else
             row[name] = value
         end
@@ -765,7 +767,7 @@ local function read_result(self)
             return nil, err, errno, sqlstate
         end
 
-        insert(cols, col)
+        cols[i] = col
     end
 
     local packet, typ, err = _recv_packet(self)
@@ -783,6 +785,7 @@ local function read_result(self)
     local compact = self.compact
 
     local rows = {}
+    local i = 0
     while true do
         --print("reading a row")
 
@@ -810,7 +813,8 @@ local function read_result(self)
         -- typ == 'DATA'
 
         local row = _parse_row_data_packet(packet, cols, compact)
-        insert(rows, row)
+        i = i + 1
+        rows[i] = row
     end
 
     self.state = STATE_CONNECTED
