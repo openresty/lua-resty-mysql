@@ -28,7 +28,7 @@ $ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
 $ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
 $ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
-#log_level 'warn';
+log_level 'warn';
 
 #no_long_string();
 #no_diff();

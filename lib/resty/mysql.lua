@@ -25,9 +25,7 @@ local error = error
 local tonumber = tonumber
 
 
-module(...)
-
-_VERSION = '0.13'
+local _M = { _VERSION = '0.13' }
 
 
 -- constants
@@ -163,7 +161,7 @@ local function _compute_token(password, scramble)
 end
 
 
-function _send_packet(self, req, size)
+local function _send_packet(self, req, size)
     local sock = self.sock
 
     self.packet_no = self.packet_no + 1
@@ -445,7 +443,7 @@ local function _recv_field_packet(self)
 end
 
 
-function new(self)
+function _M.new(self)
     local sock, err = tcp()
     if not sock then
         return nil, err
@@ -454,7 +452,7 @@ function new(self)
 end
 
 
-function set_timeout(self, timeout)
+function _M.set_timeout(self, timeout)
     local sock = self.sock
     if not sock then
         return nil, "not initialized"
@@ -464,7 +462,7 @@ function set_timeout(self, timeout)
 end
 
 
-function connect(self, opts)
+function _M.connect(self, opts)
     local sock = self.sock
     if not sock then
         return nil, "not initialized"
@@ -645,7 +643,7 @@ function connect(self, opts)
 end
 
 
-function set_keepalive(self, ...)
+function _M.set_keepalive(self, ...)
     local sock = self.sock
     if not sock then
         return nil, "not initialized"
@@ -661,7 +659,7 @@ function set_keepalive(self, ...)
 end
 
 
-function get_reused_times(self)
+function _M.get_reused_times(self)
     local sock = self.sock
     if not sock then
         return nil, "not initialized"
@@ -671,7 +669,7 @@ function get_reused_times(self)
 end
 
 
-function close(self)
+function _M.close(self)
     local sock = self.sock
     if not sock then
         return nil, "not initialized"
@@ -683,7 +681,7 @@ function close(self)
 end
 
 
-function server_ver(self)
+function _M.server_ver(self)
     return self._server_ver
 end
 
@@ -715,6 +713,7 @@ local function send_query(self, query)
 
     return bytes
 end
+_M.send_query = send_query
 
 
 local function read_result(self)
@@ -822,9 +821,10 @@ local function read_result(self)
 
     return rows
 end
+_M.read_result = read_result
 
 
-function query(self, query)
+function _M.query(self, query)
     local bytes, err = send_query(self, query)
     if not bytes then
         return nil, "failed to send query: " .. err
@@ -834,21 +834,9 @@ function query(self, query)
 end
 
 
-function set_compact_arrays(self, value)
+function _M.set_compact_arrays(self, value)
     self.compact = value
 end
 
 
-_M.send_query = send_query
-_M.read_result = read_result
-
-
-local class_mt = {
-    -- to prevent use of casual module global variables
-    __newindex = function (table, key, val)
-        error('attempt to write to undeclared variable "' .. key .. '"')
-    end
-}
-
-setmetatable(_M, class_mt)
-
+return _M
