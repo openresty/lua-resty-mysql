@@ -5,7 +5,6 @@ local bit = require "bit"
 local sub = string.sub
 local tcp = ngx.socket.tcp
 local insert = table.insert
-local strlen = string.len
 local strbyte = string.byte
 local strchar = string.char
 local strfind = string.find
@@ -89,19 +88,22 @@ end
 
 
 local function _set_byte2(n)
-    return strchar(band(n, 0xff), band(rshift(n, 8), 0xff))
+    return strchar(band(n, 0xff)) .. strchar(band(rshift(n, 8), 0xff))
 end
 
 
 local function _set_byte3(n)
-    return strchar(band(n, 0xff), band(rshift(n, 8), 0xff),
-        band(rshift(n, 16), 0xff))
+    return strchar(band(n, 0xff))
+           .. strchar(band(rshift(n, 8), 0xff))
+           .. strchar(band(rshift(n, 16), 0xff))
 end
 
 
 local function _set_byte4(n)
-    return strchar(band(n, 0xff), band(rshift(n, 8), 0xff),
-        band(rshift(n, 16), 0xff), band(rshift(n, 24), 0xff))
+    return strchar(band(n, 0xff))
+           .. strchar(band(rshift(n, 8), 0xff))
+           .. strchar(band(rshift(n, 16), 0xff))
+           .. strchar(band(rshift(n, 24), 0xff))
 end
 
 
@@ -116,12 +118,12 @@ end
 
 
 local function _to_cstring(data)
-    return {data, "\0"}
+    return data .. "\0"
 end
 
 
 local function _to_binary_coded_string(data)
-    return {strchar(strlen(data)), data}
+    return strchar(#data) .. data
 end
 
 
@@ -168,11 +170,7 @@ local function _send_packet(self, req, size)
 
     --print("packet no: ", self.packet_no)
 
-    local packet = {
-        _set_byte3(size),
-        strchar(self.packet_no),
-        req
-    }
+    local packet = _set_byte3(size) .. strchar(self.packet_no) .. req
 
     --print("sending packet...")
 
@@ -487,7 +485,7 @@ function _M.connect(self, opts)
     if host then
         local port = opts.port or 3306
         if not pool then
-            pool = concat({user, database, host, port}, ":")
+            pool = user .. ":" .. database .. ":" .. host .. ":" .. port
         end
 
         ok, err = sock:connect(host, port, { pool = pool })
@@ -499,7 +497,7 @@ function _M.connect(self, opts)
         end
 
         if not pool then
-            pool = concat({user, database, path}, ":")
+            pool = user .. ":" .. database .. ":" .. path
         end
 
         ok, err = sock:connect("unix:" .. path, { pool = pool })
@@ -596,18 +594,16 @@ function _M.connect(self, opts)
 
     --print("token: ", _dump(token))
 
-    local req = {
-        _set_byte4(client_flags),
-        _set_byte4(self._max_packet_size),
-        "\0", -- TODO: add support for charset encoding
-        strrep("\0", 23),
-        _to_cstring(user),
-        _to_binary_coded_string(token),
-        _to_cstring(database)
-    }
+    local req = _set_byte4(client_flags)
+                .. _set_byte4(self._max_packet_size)
+                .. "\0" -- TODO: add support for charset encoding
+                .. strrep("\0", 23)
+                .. _to_cstring(user)
+                .. _to_binary_coded_string(token)
+                .. _to_cstring(database)
 
-    local packet_len = 4 + 4 + 1 + 23 + strlen(user) + 1
-        + strlen(token) + 1 + strlen(database) + 1
+    local packet_len = 4 + 4 + 1 + 23 + #user + 1
+        + #token + 1 + #database + 1
 
     -- print("packet content length: ", packet_len)
     -- print("packet content: ", _dump(concat(req, "")))
@@ -699,8 +695,8 @@ local function send_query(self, query)
 
     self.packet_no = -1
 
-    local cmd_packet = {strchar(COM_QUERY), query}
-    local packet_len = 1 + strlen(query)
+    local cmd_packet = strchar(COM_QUERY) .. query
+    local packet_len = 1 + #query
 
     local bytes, err = _send_packet(self, cmd_packet, packet_len)
     if not bytes then
