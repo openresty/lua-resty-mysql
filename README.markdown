@@ -94,8 +94,10 @@ Synopsis
                 ngx.say(res.affected_rows, " rows inserted into table cats ",
                         "(last insert id: ", res.insert_id, ")")
 
+                -- run a select query, expected about 10 rows in
+                -- the result set:
                 res, err, errno, sqlstate =
-                    db:query("select * from cats order by id asc")
+                    db:query("select * from cats order by id asc", 10)
                 if not res then
                     ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                     return
@@ -208,6 +210,8 @@ read_result
 -----------
 `syntax: res, err, errno, sqlstate = db:read_result()`
 
+`syntax: res, err, errno, sqlstate = db:read_result(est_nrows)`
+
 Reads in one result returned from the MySQL server.
 
 It returns a Lua table (`res`) describing the MySQL `OK packet` or `result set packet` for the query result.
@@ -233,9 +237,14 @@ If more results are following the current result, a second `err` return value wi
 
 In case of errors, this method returns at most 4 values: `nil`, `err`, `errcode`, and `sqlstate`. The `err` return value contains a string describing the error, the `errcode` return value holds the MySQL error code (a numerical value), and finally, the `sqlstate` return value contains the standard SQL error code that consists of 5 characters. Note that, the `errcode` and `sqlstate` might be `nil` if MySQL does not return them.
 
+The optional argument `est_nrows` can be used to specify an approximate number of rows for the result set. This value can be used
+to pre-allocate space in the resulting Lua table for the result set. By default, it takes the value 4.
+
 query
 -----
 `syntax: res, err, errcode, sqlstate = db:query(query)`
+
+`syntax: res, err, errcode, sqlstate = db:query(query, est_nrows)`
 
 This is a shortcut for combining the [send_query](#send_query) call and the first [read_result](#read_result) call.
 
