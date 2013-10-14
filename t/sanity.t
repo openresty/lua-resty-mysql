@@ -542,6 +542,7 @@ result: [{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah
                 db:query("select * from foo order by id asc")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
             else
                 ngx.say("result: ", cjson.encode(res), ", err:", err)
             end
@@ -549,6 +550,7 @@ result: [{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah
             res, err, errno, sqlstate = db:read_result()
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
             else
                 ngx.say("result: ", cjson.encode(res), ", err:", err)
             end
@@ -557,6 +559,7 @@ result: [{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah
                 db:query("select * from foo order by id asc")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
             else
                 ngx.say("result: ", cjson.encode(res), ", err:", err)
             end
@@ -574,8 +577,6 @@ GET /t
 connected to mysql.
 result: {"affected_rows":0,"insert_id":0,"server_status":10,"warning_count":0}, err:again
 bad result: failed to send query: cannot send query in the current context: 2: nil: nil.
-result: {"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":0}, err:nil
-result: {}, err:nil
 --- no_error_log
 [error]
 
