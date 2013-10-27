@@ -25,6 +25,8 @@ Also, the [bit library](http://bitop.luajit.org/) is also required. If you're us
 Synopsis
 ========
 
+```lua
+
     # you do not need the following line if you are using
     # the ngx_openresty bundle:
     lua_package_path "/path/to/lua-resty-mysql/lib/?.lua;;";
@@ -123,6 +125,7 @@ Synopsis
             ';
         }
     }
+```
 
 Methods
 =======
@@ -142,23 +145,23 @@ Attempts to connect to the remote MySQL server.
 The `options` argument is a Lua table holding the following keys:
 
 * `host`
-: the host name for the MySQL server.
+    the host name for the MySQL server.
 * `port`
-: the port that the MySQL server is listening on. Default to 3306.
+    the port that the MySQL server is listening on. Default to 3306.
 * `path`
-: the path of the unix socket file listened by the MySQL server.
+    the path of the unix socket file listened by the MySQL server.
 * `database`
-: the MySQL database name.
+    the MySQL database name.
 * `user`
-: MySQL account name for login.
+    MySQL account name for login.
 * `password`
-: MySQL account password for login (in clear text).
+    MySQL account password for login (in clear text).
 * `max_packet_size`
-: the upper limit for the reply packets sent from the MySQL server (default to 1MB).
+    the upper limit for the reply packets sent from the MySQL server (default to 1MB).
 * `pool`
-: the name for the MySQL connection pool. if omitted, an ambiguous pool name will be generated automatically with the string template `user:database:host:port` or `user:database:path`. (this option was first introduced in `v0.08`.)
+    the name for the MySQL connection pool. if omitted, an ambiguous pool name will be generated automatically with the string template `user:database:host:port` or `user:database:path`. (this option was first introduced in `v0.08`.)
 * `compact_arrays`
-: when this option is set to true, then the [query](#query) and [read_result](#read_result) methods will return the array-of-arrays structure for the resultset, rather than the default array-of-hashes structure.
+    when this option is set to true, then the [query](#query) and [read_result](#read_result) methods will return the array-of-arrays structure for the resultset, rather than the default array-of-hashes structure.
 
 Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.
 
@@ -218,13 +221,16 @@ It returns a Lua table (`res`) describing the MySQL `OK packet` or `result set p
 
 For queries corresponding to a result set, it returns an array holding all the rows. Each row holds key-value apirs for each data fields. For instance,
 
+```lua
     {
         { name = "Bob", age = 32, phone = ngx.null },
         { name = "Marry", age = 18, phone = "10666372"}
     }
+```
 
 For queries that do not correspond to a result set, it returns a Lua table like this:
 
+```lua
     {
         insert_id = 0,
         server_status = 2,
@@ -232,6 +238,7 @@ For queries that do not correspond to a result set, it returns a Lua table like 
         affected_rows = 32,
         message = nil
     }
+```
 
 If more results are following the current result, a second `err` return value will be given the string `again`. One should always check this (second) return value and if it is `again`, then she should call this method again to retrieve more results. This usually happens when the original query contains multiple statements (separated by semicolon in the same query string) or calling a MySQL procedure. See also [Multi-Resultset Support](#multi-resultset-support).
 
@@ -273,9 +280,11 @@ It is always important to quote SQL literals properly to prevent SQL injection a
 [ngx.quote_sql_str](http://wiki.nginx.org/HttpLuaModule#ngx.quote_sql_str) function provided by ngx_lua to quote values.
 Here is an example:
 
+```lua
     local name = ngx.unescape_uri(ngx.var.arg_name)
     local quoted_name = ngx.quote_sql_str(name)
     local sql = "select * from users where name = " .. quoted_name
+```
 
 Multi-Resultset Support
 =======================
@@ -284,6 +293,7 @@ For a SQL query that produces multiple result-sets, it is always your duty to ch
 
 Below is a trivial example for this:
 
+```lua
     local cjson = require "cjson"
     local mysql = require "resty.mysql"
 
@@ -325,6 +335,7 @@ Below is a trivial example for this:
         ngx.log(ngx.ERR, "failed to set keepalive: ", err)
         ngx.exit(500)
     end
+```
 
 This code snippet will produce the following response body data:
 
@@ -337,12 +348,14 @@ Debugging
 
 It is usually convenient to use the [lua-cjson](http://www.kyne.com.au/~mark/software/lua-cjson.php) library to encode the return values of the MySQL query methods to JSON. For example,
 
+```lua
     local cjson = require "cjson"
     ...
     local res, err, errcode, sqlstate = db:query("select * from cats")
     if res then
         print("res: ", cjson.encode(res))
     end
+```
 
 Automatic Error Logging
 =======================
@@ -351,7 +364,9 @@ By default the underlying [ngx_lua](http://wiki.nginx.org/HttpLuaModule) module
 does error logging when socket errors happen. If you are already doing proper error
 handling in your own Lua code, then you are recommended to disable this automatic error logging by turning off [ngx_lua](http://wiki.nginx.org/HttpLuaModule)'s [lua_socket_log_errors](http://wiki.nginx.org/HttpLuaModule#lua_socket_log_errors) directive, that is,
 
+```nginx
     lua_socket_log_errors off;
+```
 
 Limitations
 ===========
@@ -375,18 +390,22 @@ you do not need to do anything because it already includes and enables
 lua-resty-mysql by default. And you can just use it in your Lua code,
 as in
 
+```lua
     local mysql = require "resty.mysql"
     ...
+```
 
 If you are using your own nginx + ngx_lua build, then you need to configure
 the lua_package_path directive to add the path of your lua-resty-mysql source
 tree to ngx_lua's LUA_PATH search path, as in
 
+```nginx
     # nginx.conf
     http {
         lua_package_path "/path/to/lua-resty-mysql/lib/?.lua;;";
         ...
     }
+```
 
 Ensure that the system account running your Nginx ''worker'' proceses have
 enough permission to read the `.lua` file.
