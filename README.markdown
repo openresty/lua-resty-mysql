@@ -3,6 +3,40 @@ Name
 
 lua-resty-mysql - Lua MySQL client driver for ngx_lua based on the cosocket API
 
+Table of Contents
+=================
+
+* [Name](#name)
+* [Status](#status)
+* [Description](#description)
+* [Synopsis](#synopsis)
+* [Methods](#methods)
+    * [new](#new)
+    * [connect](#connect)
+    * [set_timeout](#set_timeout)
+    * [set_keepalive](#set_keepalive)
+    * [get_reused_times](#get_reused_times)
+    * [close](#close)
+    * [send_query](#send_query)
+    * [read_result](#read_result)
+    * [query](#query)
+    * [server_ver](#server_ver)
+    * [set_compact_arrays](#set_compact_arrays)
+* [SQL Literal Quoting](#sql-literal-quoting)
+* [Multi-Resultset Support](#multi-resultset-support)
+* [Debugging](#debugging)
+* [Automatic Error Logging](#automatic-error-logging)
+* [Limitations](#limitations)
+* [Installation](#installation)
+* [Community](#community)
+    * [English Mailing List](#english-mailing-list)
+    * [Chinese Mailing List](#chinese-mailing-list)
+* [Bugs and Patches](#bugs-and-patches)
+* [TODO](#todo)
+* [Author](#author)
+* [Copyright and License](#copyright-and-license)
+* [See Also](#see-also)
+
 Status
 ======
 
@@ -127,14 +161,20 @@ Synopsis
     }
 ```
 
+[Back to TOC](#table-of-contents)
+
 Methods
 =======
+
+[Back to TOC](#table-of-contents)
 
 new
 ---
 `syntax: db, err = mysql:new()`
 
 Creates a MySQL connection object. In case of failures, returns `nil` and a string describing the error.
+
+[Back to TOC](#table-of-contents)
 
 connect
 -------
@@ -165,11 +205,15 @@ The `options` argument is a Lua table holding the following keys:
 
 Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.
 
+[Back to TOC](#table-of-contents)
+
 set_timeout
 ----------
 `syntax: db:set_timeout(time)`
 
 Sets the timeout (in ms) protection for subsequent operations, including the `connect` method.
+
+[Back to TOC](#table-of-contents)
 
 set_keepalive
 ------------
@@ -183,6 +227,8 @@ In case of success, returns `1`. In case of errors, returns `nil` with a string 
 
 Only call this method in the place you would have called the `close` method instead. Calling this method will immediately turn the current `resty.mysql` object into the `closed` state. Any subsequent operations other than `connect()` on the current objet will return the `closed` error.
 
+[Back to TOC](#table-of-contents)
+
 get_reused_times
 ----------------
 `syntax: times, err = db:get_reused_times()`
@@ -191,6 +237,8 @@ This method returns the (successfully) reused times for the current connection. 
 
 If the current connection does not come from the built-in connection pool, then this method always returns `0`, that is, the connection has never been reused (yet). If the connection comes from the connection pool, then the return value is always non-zero. So this method can also be used to determine if the current connection comes from the pool.
 
+[Back to TOC](#table-of-contents)
+
 close
 -----
 `syntax: ok, err = db:close()`
@@ -198,6 +246,8 @@ close
 Closes the current mysql connection and returns the status.
 
 In case of success, returns `1`. In case of errors, returns `nil` with a string describing the error.
+
+[Back to TOC](#table-of-contents)
 
 send_query
 ----------
@@ -208,6 +258,8 @@ Sends the query to the remote MySQL server without waiting for its replies.
 Returns the bytes successfully sent out in success and otherwise returns `nil` and a string describing the error.
 
 You should use the [read_result](#read_result) method to read the MySQL replies afterwards.
+
+[Back to TOC](#table-of-contents)
 
 read_result
 -----------
@@ -247,6 +299,8 @@ In case of errors, this method returns at most 4 values: `nil`, `err`, `errcode`
 The optional argument `est_nrows` can be used to specify an approximate number of rows for the result set. This value can be used
 to pre-allocate space in the resulting Lua table for the result set. By default, it takes the value 4.
 
+[Back to TOC](#table-of-contents)
+
 query
 -----
 `syntax: res, err, errcode, sqlstate = db:query(query)`
@@ -257,6 +311,8 @@ This is a shortcut for combining the [send_query](#send_query) call and the firs
 
 You should always check if the `err` return value  is `again` in case of success because this method will only call [read_result](#read_result) only once for you. See also [Multi-Resultset Support](#multi-resultset-support).
 
+[Back to TOC](#table-of-contents)
+
 server_ver
 ----------
 `syntax: str = db:server_ver()`
@@ -265,6 +321,8 @@ Returns the MySQL server version string, like `"5.1.64"`.
 
 You should only call this method after successfully connecting to a MySQL server, otherwise `nil` will be returned.
 
+[Back to TOC](#table-of-contents)
+
 set_compact_arrays
 ------------------
 `syntax: db:set_compact_arrays(boolean)`
@@ -272,6 +330,8 @@ set_compact_arrays
 Sets whether to use the "compact-arrays" structure for the resultsets returned by subsequent queries. See the `compact_arrays` option for the `connect` method for more details.
 
 This method was first introduced in the `v0.09` release.
+
+[Back to TOC](#table-of-contents)
 
 SQL Literal Quoting
 ===================
@@ -285,6 +345,8 @@ Here is an example:
     local quoted_name = ngx.quote_sql_str(name)
     local sql = "select * from users where name = " .. quoted_name
 ```
+
+[Back to TOC](#table-of-contents)
 
 Multi-Resultset Support
 =======================
@@ -343,6 +405,8 @@ This code snippet will produce the following response body data:
     result #2: [{"2":"2"}]
     result #3: [{"3":"3"}]
 
+[Back to TOC](#table-of-contents)
+
 Debugging
 =========
 
@@ -357,6 +421,8 @@ It is usually convenient to use the [lua-cjson](http://www.kyne.com.au/~mark/sof
     end
 ```
 
+[Back to TOC](#table-of-contents)
+
 Automatic Error Logging
 =======================
 
@@ -367,6 +433,8 @@ handling in your own Lua code, then you are recommended to disable this automati
 ```nginx
     lua_socket_log_errors off;
 ```
+
+[Back to TOC](#table-of-contents)
 
 Limitations
 ===========
@@ -381,6 +449,8 @@ result in bad race conditions when concurrent requests are trying to use the sam
 You should always initiate `resty.mysql` objects in function local
 variables or in the `ngx.ctx` table. These places all have their own data copies for
 each request.
+
+[Back to TOC](#table-of-contents)
 
 Installation
 ============
@@ -410,18 +480,26 @@ tree to ngx_lua's LUA_PATH search path, as in
 Ensure that the system account running your Nginx ''worker'' proceses have
 enough permission to read the `.lua` file.
 
+[Back to TOC](#table-of-contents)
+
 Community
 =========
+
+[Back to TOC](#table-of-contents)
 
 English Mailing List
 --------------------
 
 The [openresty-en](https://groups.google.com/group/openresty-en) mailing list is for English speakers.
 
+[Back to TOC](#table-of-contents)
+
 Chinese Mailing List
 --------------------
 
 The [openresty](https://groups.google.com/group/openresty) mailing list is for Chinese speakers.
+
+[Back to TOC](#table-of-contents)
 
 Bugs and Patches
 ================
@@ -430,6 +508,8 @@ Please submit bug reports, wishlists, or patches by
 
 1. creating a ticket on the [GitHub Issue Tracker](http://github.com/agentzh/lua-resty-mysql/issues),
 1. or posting to the [OpenResty community](http://wiki.nginx.org/HttpLuaModule#Community).
+
+[Back to TOC](#table-of-contents)
 
 TODO
 ====
@@ -440,10 +520,14 @@ TODO
 * implement MySQL server prepare and execute packets.
 * implement the data compression support in the protocol.
 
+[Back to TOC](#table-of-contents)
+
 Author
 ======
 
 Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, CloudFlare Inc.
+
+[Back to TOC](#table-of-contents)
 
 Copyright and License
 =====================
@@ -462,6 +546,8 @@ Redistribution and use in source and binary forms, with or without modification,
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+[Back to TOC](#table-of-contents)
+
 See Also
 ========
 * the ngx_lua module: http://wiki.nginx.org/HttpLuaModule
@@ -469,4 +555,6 @@ See Also
 * the [lua-resty-memcached](https://github.com/agentzh/lua-resty-memcached) library
 * the [lua-resty-redis](https://github.com/agentzh/lua-resty-redis) library
 * the ngx_drizzle module: http://wiki.nginx.org/HttpDrizzleModule
+
+[Back to TOC](#table-of-contents)
 
