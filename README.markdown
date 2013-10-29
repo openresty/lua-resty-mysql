@@ -274,7 +274,7 @@ read_result
 -----------
 `syntax: res, err, errno, sqlstate = db:read_result()`
 
-`syntax: res, err, errno, sqlstate = db:read_result(est_nrows)`
+`syntax: res, err, errno, sqlstate = db:read_result(nrows)`
 
 Reads in one result returned from the MySQL server.
 
@@ -305,7 +305,7 @@ If more results are following the current result, a second `err` return value wi
 
 In case of errors, this method returns at most 4 values: `nil`, `err`, `errcode`, and `sqlstate`. The `err` return value contains a string describing the error, the `errcode` return value holds the MySQL error code (a numerical value), and finally, the `sqlstate` return value contains the standard SQL error code that consists of 5 characters. Note that, the `errcode` and `sqlstate` might be `nil` if MySQL does not return them.
 
-The optional argument `est_nrows` can be used to specify an approximate number of rows for the result set. This value can be used
+The optional argument `nrows` can be used to specify an approximate number of rows for the result set. This value can be used
 to pre-allocate space in the resulting Lua table for the result set. By default, it takes the value 4.
 
 [Back to TOC](#table-of-contents)
@@ -314,7 +314,7 @@ query
 -----
 `syntax: res, err, errcode, sqlstate = db:query(query)`
 
-`syntax: res, err, errcode, sqlstate = db:query(query, est_nrows)`
+`syntax: res, err, errcode, sqlstate = db:query(query, nrows)`
 
 This is a shortcut for combining the [send_query](#send_query) call and the first [read_result](#read_result) call.
 
