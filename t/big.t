@@ -19,7 +19,7 @@ my $pwd = cwd();
 
 our $HttpConfig = qq{
     resolver \$TEST_NGINX_RESOLVER;
-    lua_package_path "$pwd/lib/?.lua;;";
+    lua_package_path "$pwd/lib/?.lua;$pwd/t/lib/?.lua;;";
     lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
 };
 
@@ -43,7 +43,7 @@ __DATA__
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -97,7 +97,7 @@ __DATA__
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             res, err, errno, sqlstate = db:query("select * from cats order by id desc")
             if not res then
@@ -105,7 +105,7 @@ __DATA__
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -121,10 +121,10 @@ GET /t
 table cats dropped.
 table cats created.
 1 rows inserted into table cats (last id: 1)
-result: [{"name":"' . ('B' x 1024)
-   . '","id":"1"}]' . "\n" .
-'result: [{"name":"' . ('B' x 1024)
-   . '","id":"1"}]' . "\n"
+result: [{"id":"1","name":"' . ('B' x 1024)
+   . '"}]' . "\n" .
+'result: [{"id":"1","name":"' . ('B' x 1024)
+   . '"}]' . "\n"
 --- no_error_log
 [error]
 
@@ -135,7 +135,7 @@ result: [{"name":"' . ('B' x 1024)
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -191,7 +191,7 @@ result: [{"name":"' . ('B' x 1024)
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             res, err, errno, sqlstate =
                 db:query("select * from cats order by id desc")
@@ -200,7 +200,7 @@ result: [{"name":"' . ('B' x 1024)
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -228,7 +228,7 @@ bad result: packet size too big: 1029: nil: nil.
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -282,7 +282,7 @@ bad result: packet size too big: 1029: nil: nil.
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             res, err, errno, sqlstate = db:query("select name from cats order by id desc")
             if not res then
@@ -290,7 +290,7 @@ bad result: packet size too big: 1029: nil: nil.
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -320,7 +320,7 @@ result: [{"name":"' . ('B' x 1024)
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -374,7 +374,7 @@ result: [{"name":"' . ('B' x 1024)
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             res, err, errno, sqlstate = db:query("select name from cats order by id desc")
             if not res then
@@ -382,7 +382,7 @@ result: [{"name":"' . ('B' x 1024)
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then

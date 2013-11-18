@@ -11,7 +11,7 @@ my $pwd = cwd();
 
 our $HttpConfig = qq{
     resolver \$TEST_NGINX_RESOLVER;
-    lua_package_path "$pwd/lib/?.lua;;";
+    lua_package_path "$pwd/lib/?.lua;$pwd/t/lib/?.lua;;";
     lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
 };
 
@@ -170,8 +170,8 @@ connected to mysql \d\.\S+
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
             end
 
-            local cjson = require "cjson"
-            ngx.say("result: ", cjson.encode(res))
+            local ljson = require "ljson"
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -185,7 +185,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql \d\.\S+\.
 sent 30 bytes\.
-result: (?:{"insert_id":0,"server_status":2,"warning_count":[01],"affected_rows":0}|{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]})$
+result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]\}$
 --- no_error_log
 [error]
 
@@ -228,8 +228,8 @@ result: (?:{"insert_id":0,"server_status":2,"warning_count":[01],"affected_rows"
                 return
             end
 
-            local cjson = require "cjson"
-            ngx.say("result: ", cjson.encode(res))
+            local ljson = require "ljson"
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -254,7 +254,7 @@ bad result: You have an error in your SQL syntax; check the manual that correspo
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -305,7 +305,7 @@ bad result: You have an error in your SQL syntax; check the manual that correspo
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             res, err, errno, sqlstate = db:query("select * from cats order by id desc")
             if not res then
@@ -313,7 +313,7 @@ bad result: You have an error in your SQL syntax; check the manual that correspo
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -329,8 +329,8 @@ connected to mysql.
 table cats dropped.
 table cats created.
 3 rows inserted into table cats (last id: 1)
-result: [{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}]
-result: [{"name":null,"id":"3"},{"name":"","id":"2"},{"name":"Bob","id":"1"}]
+result: [{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}]
+result: [{"id":"3","name":null},{"id":"2","name":""},{"id":"1","name":"Bob"}]
 --- no_error_log
 [error]
 
@@ -341,7 +341,7 @@ result: [{"name":null,"id":"3"},{"name":"","id":"2"},{"name":"Bob","id":"1"}]
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -384,7 +384,7 @@ result: [{"name":null,"id":"3"},{"name":"","id":"2"},{"name":"Bob","id":"1"}]
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             res, err, errno, sqlstate = db:query("select * from cats order by id desc")
             if not res then
@@ -392,7 +392,7 @@ result: [{"name":null,"id":"3"},{"name":"","id":"2"},{"name":"Bob","id":"1"}]
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -407,8 +407,8 @@ GET /t
 connected to mysql.
 table cats dropped.
 table cats created.
-result: {}
-result: {}
+result: []
+result: []
 --- no_error_log
 [error]
 
@@ -419,7 +419,7 @@ result: {}
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -470,7 +470,7 @@ result: {}
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             res, err, errno, sqlstate = db:query("select * from foo order by id desc")
             if not res then
@@ -478,7 +478,7 @@ result: {}
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -494,8 +494,8 @@ connected to mysql.
 table foo dropped.
 table foo created.
 2 rows inserted into table foo (last id: 1)
-result: [{"id":"1","hah":256,"kah":"65535","lah":579,"haha":1998,"bah":3.14,"blah":5.16,"baz":4,"bar":3},{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":null,"baz":null,"bar":null}]
-result: [{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah":null,"baz":null,"bar":null},{"id":"1","hah":256,"kah":"65535","lah":579,"haha":1998,"bah":3.14,"blah":5.16,"baz":4,"bar":3}]
+result: [{"bah":3.14,"bar":3,"baz":4,"blah":5.16,"hah":256,"haha":1998,"id":"1","kah":"65535","lah":579},{"bah":null,"bar":null,"baz":null,"blah":null,"hah":null,"haha":null,"id":"2","kah":null,"lah":null}]
+result: [{"bah":null,"bar":null,"baz":null,"blah":null,"hah":null,"haha":null,"id":"2","kah":null,"lah":null},{"bah":3.14,"bar":3,"baz":4,"blah":5.16,"hah":256,"haha":1998,"id":"1","kah":"65535","lah":579}]
 --- no_error_log
 [error]
 --- timeout: 5
@@ -507,7 +507,7 @@ result: [{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -536,7 +536,7 @@ result: [{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res), ", err:", err)
+            ngx.say("result: ", ljson.encode(res), ", err:", err)
 
             res, err, errno, sqlstate =
                 db:query("select * from foo order by id asc")
@@ -544,7 +544,7 @@ result: [{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
             else
-                ngx.say("result: ", cjson.encode(res), ", err:", err)
+                ngx.say("result: ", ljson.encode(res), ", err:", err)
             end
 
             res, err, errno, sqlstate = db:read_result()
@@ -552,7 +552,7 @@ result: [{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
             else
-                ngx.say("result: ", cjson.encode(res), ", err:", err)
+                ngx.say("result: ", ljson.encode(res), ", err:", err)
             end
 
             res, err, errno, sqlstate =
@@ -561,7 +561,7 @@ result: [{"id":"2","hah":null,"kah":null,"lah":null,"haha":null,"bah":null,"blah
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
             else
-                ngx.say("result: ", cjson.encode(res), ", err:", err)
+                ngx.say("result: ", ljson.encode(res), ", err:", err)
             end
 
             local ok, err = db:close()
@@ -587,7 +587,7 @@ bad result: failed to send query: cannot send query in the current context: 2: n
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -645,7 +645,7 @@ bad result: failed to send query: cannot send query in the current context: 2: n
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res), ", err:", err)
+            ngx.say("result: ", ljson.encode(res), ", err:", err)
 
             res, err, errno, sqlstate = db:read_result()
             if not res then
@@ -653,7 +653,7 @@ bad result: failed to send query: cannot send query in the current context: 2: n
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res), ", err:", err)
+            ngx.say("result: ", ljson.encode(res), ", err:", err)
 
             local ok, err = db:close()
             if not ok then
@@ -669,8 +669,8 @@ connected to mysql.
 table cats dropped.
 table cats created.
 3 rows inserted into table cats (last id: 1)
-result: [{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}], err:again
-result: [{"name":null,"id":"3"},{"name":"","id":"2"},{"name":"Bob","id":"1"}], err:nil
+result: [{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}], err:again
+result: [{"id":"3","name":null},{"id":"2","name":""},{"id":"1","name":"Bob"}], err:nil
 --- no_error_log
 [error]
 
@@ -681,7 +681,7 @@ result: [{"name":null,"id":"3"},{"name":"","id":"2"},{"name":"Bob","id":"1"}], e
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -739,7 +739,7 @@ result: [{"name":null,"id":"3"},{"name":"","id":"2"},{"name":"Bob","id":"1"}], e
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res), ", err:", err)
+            ngx.say("result: ", ljson.encode(res), ", err:", err)
 
             local ok, err = db:set_keepalive()
             if not ok then
@@ -755,7 +755,7 @@ connected to mysql.
 table cats dropped.
 table cats created.
 3 rows inserted into table cats (last id: 1)
-result: [{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}], err:again
+result: [{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}], err:again
 failed to set keepalive: cannot be reused in the current connection state: 2
 --- no_error_log
 [error]
@@ -767,7 +767,7 @@ failed to set keepalive: cannot be reused in the current connection state: 2
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -810,7 +810,7 @@ ok, err, errno, sqlstate = db:connect({
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res), ", err:", err)
+            ngx.say("result: ", ljson.encode(res), ", err:", err)
 
             local ok, err = db:set_keepalive()
             if not ok then
@@ -824,7 +824,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}\], err:nil$
+result: \[{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
@@ -868,8 +868,8 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
             end
 
-            local cjson = require "cjson"
-            ngx.say("result: ", cjson.encode(res))
+            local ljson = require "ljson"
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -894,7 +894,7 @@ result: (?:{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0}
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -945,7 +945,7 @@ result: (?:{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0}
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             res, err, errno, sqlstate = db:query("select name from cats order by id desc")
             if not res then
@@ -953,7 +953,7 @@ result: (?:{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0}
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -981,7 +981,7 @@ result: [{"name":null},{"name":""},{"name":"Bob"}]
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -1022,7 +1022,7 @@ result: [{"name":null},{"name":""},{"name":"Bob"}]
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res), ", err:", err)
+            ngx.say("result: ", ljson.encode(res), ", err:", err)
 
             local ok, err = db:set_keepalive()
             if not ok then
@@ -1036,7 +1036,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}\], err:nil$
+result: \[{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
@@ -1050,7 +1050,7 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -1094,7 +1094,7 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res), ", err:", err)
+            ngx.say("result: ", ljson.encode(res), ", err:", err)
 
             local ok, err = db:set_keepalive()
             if not ok then
@@ -1108,7 +1108,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"name":"Bob","id":"1"},{"name":"","id":"2"},{"name":null,"id":"3"}\], err:nil$
+result: \[{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
@@ -1122,7 +1122,7 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -1166,7 +1166,7 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res), ", err:", err)
+            ngx.say("result: ", ljson.encode(res), ", err:", err)
 
             local ok, err = db:set_keepalive()
             if not ok then

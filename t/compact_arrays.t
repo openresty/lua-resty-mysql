@@ -11,7 +11,7 @@ my $pwd = cwd();
 
 our $HttpConfig = qq{
     resolver \$TEST_NGINX_RESOLVER;
-    lua_package_path "$pwd/lib/?.lua;;";
+    lua_package_path "$pwd/lib/?.lua;$pwd/t/lib/?.lua;;";
     lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
 };
 
@@ -66,8 +66,8 @@ __DATA__
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
             end
 
-            local cjson = require "cjson"
-            ngx.say("result: ", cjson.encode(res))
+            local ljson = require "ljson"
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -92,7 +92,7 @@ result: (?:{"insert_id":0,"server_status":2,"warning_count":[01],"affected_rows"
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -144,7 +144,7 @@ result: (?:{"insert_id":0,"server_status":2,"warning_count":[01],"affected_rows"
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             res, err, errno, sqlstate = db:query("select name, id from cats order by id desc")
             if not res then
@@ -152,7 +152,7 @@ result: (?:{"insert_id":0,"server_status":2,"warning_count":[01],"affected_rows"
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -180,7 +180,7 @@ result: [[null,"3"],["","2"],["Bob","1"]]
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -224,7 +224,7 @@ result: [[null,"3"],["","2"],["Bob","1"]]
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             res, err, errno, sqlstate = db:query("select * from cats order by id desc")
             if not res then
@@ -232,7 +232,7 @@ result: [[null,"3"],["","2"],["Bob","1"]]
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -247,8 +247,8 @@ GET /t
 connected to mysql.
 table cats dropped.
 table cats created.
-result: {}
-result: {}
+result: []
+result: []
 --- no_error_log
 [error]
 
@@ -259,7 +259,7 @@ result: {}
 --- config
     location /t {
         content_by_lua '
-            local cjson = require "cjson"
+            local ljson = require "ljson"
 
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -312,7 +312,7 @@ result: {}
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             db:set_compact_arrays(false)
 
@@ -322,7 +322,7 @@ result: {}
                 return
             end
 
-            ngx.say("result: ", cjson.encode(res))
+            ngx.say("result: ", ljson.encode(res))
 
             local ok, err = db:close()
             if not ok then
@@ -339,7 +339,7 @@ table cats dropped.
 table cats created.
 3 rows inserted into table cats (last id: 1)
 result: [["Bob","1"],["","2"],[null,"3"]]
-result: [{"name":null,"id":"3"},{"name":"","id":"2"},{"name":"Bob","id":"1"}]
+result: [{"id":"3","name":null},{"id":"2","name":""},{"id":"1","name":"Bob"}]
 --- no_error_log
 [error]
 
