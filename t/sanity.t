@@ -24,6 +24,7 @@ $ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
 no_long_string();
 no_shuffle();
+check_accum_error_log();
 
 run_tests();
 
