@@ -7,7 +7,7 @@ BEGIN {
     }
 }
 
-use Test::Nginx::Socket @skip;
+use Test::Nginx::Socket::Lua @skip;
 use Cwd qw(cwd);
 
 repeat_each(50);
