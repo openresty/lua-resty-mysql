@@ -347,7 +347,7 @@ result: [{"id":"3","name":null},{"id":"2","name":""},{"id":"1","name":"Bob"}]
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(2000) -- 2 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
