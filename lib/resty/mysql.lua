@@ -551,6 +551,8 @@ function _M.connect(self, opts)
     self._server_ver = server_ver
 
     local thread_id, pos = _get_byte4(packet, pos)
+    
+    self._thread_id = thread_id
 
     --print("thread id: ", thread_id)
 
@@ -694,6 +696,9 @@ function _M.server_ver(self)
     return self._server_ver
 end
 
+function _M.thread_id(self)
+    return self._thread_id
+end
 
 local function send_query(self, query)
     if self.state ~= STATE_CONNECTED then
