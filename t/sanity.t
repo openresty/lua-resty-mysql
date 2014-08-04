@@ -244,7 +244,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql \d\.\S+\.
 sent 12 bytes\.
-bad result: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'bad SQL' at line 1: 1064: 42000\.$
+bad result: You have an error in your SQL syntax; check the manual that corresponds to your (?:MySQL|MariaDB) server version for the right syntax to use near 'bad SQL' at line 1: 1064: 42000\.$
 --- no_error_log
 [error]
 
