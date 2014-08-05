@@ -214,7 +214,7 @@ The `options` argument is a Lua table holding the following keys:
 
     If set to `true`, then verifies the validity of the server SSL certificate (default to `false`).
     Note that you need to configure the [lua_ssl_trusted_certificate](https://github.com/openresty/lua-nginx-module#lua_ssl_trusted_certificate)
-    to specify the CA certificate used by your MySQL server. You may also
+    to specify the CA (or server) certificate used by your MySQL server. You may also
     need to configure [lua_ssl_verify_depth](https://github.com/openresty/lua-nginx-module#lua_ssl_verify_depth)
     accordingly.
 * `pool`
