@@ -205,6 +205,18 @@ The `options` argument is a Lua table holding the following keys:
 * `max_packet_size`
 
     the upper limit for the reply packets sent from the MySQL server (default to 1MB).
+* `ssl`
+
+    If set to `true`, then uses SSL to connect to MySQL (default to `false`). If the MySQL
+    server does not have SSL support
+    (or just disabled), the error string "ssl disabled on server" will be returned.
+* `ssl_verify`
+
+    If set to `true`, then verifies the validity of the server SSL certificate (default to `false`).
+    Note that you need to configure the [lua_ssl_trusted_certificate](https://github.com/openresty/lua-nginx-module#lua_ssl_trusted_certificate)
+    to specify the CA certificate used by your MySQL server. You may also
+    need to configure [lua_ssl_verify_depth](https://github.com/openresty/lua-nginx-module#lua_ssl_verify_depth)
+    accordingly.
 * `pool`
 
     the name for the MySQL connection pool. if omitted, an ambiguous pool name will be generated automatically with the string template `user:database:host:port` or `user:database:path`. (this option was first introduced in `v0.08`.)

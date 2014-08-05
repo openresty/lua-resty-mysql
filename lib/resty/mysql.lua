@@ -7,6 +7,7 @@ local tcp = ngx.socket.tcp
 local strbyte = string.byte
 local strchar = string.char
 local strfind = string.find
+local format = string.format
 local strrep = string.rep
 local null = ngx.null
 local band = bit.band
@@ -21,6 +22,14 @@ local unpack = unpack
 local setmetatable = setmetatable
 local error = error
 local tonumber = tonumber
+
+
+if not ngx.config
+   or not ngx.config.ngx_lua_version
+   or ngx.config.ngx_lua_version < 9011
+then
+    error("ngx_lua 0.9.11+ required")
+end
 
 
 local ok, new_tab = pcall(require, "table.new")
@@ -38,6 +47,7 @@ local STATE_CONNECTED = 1
 local STATE_COMMAND_SENT = 2
 
 local COM_QUERY = 0x03
+local CLIENT_SSL = 0x0800
 
 local SERVER_MORE_RESULTS_EXISTS = 8
 
@@ -136,7 +146,7 @@ local function _dump(data)
     local len = #data
     local bytes = new_tab(len, 0)
     for i = 1, len do
-        bytes[i] = strbyte(data, i)
+        bytes[i] = format("%x", strbyte(data, i))
     end
     return concat(bytes, " ")
 end
@@ -175,11 +185,13 @@ local function _send_packet(self, req, size)
 
     self.packet_no = self.packet_no + 1
 
-    --print("packet no: ", self.packet_no)
+    -- print("packet no: ", self.packet_no)
 
     local packet = _set_byte3(size) .. strchar(self.packet_no) .. req
 
-    --print("sending packet...")
+    -- print("sending packet: ", _dump(packet))
+
+    -- print("sending packet... of size " .. #packet)
 
     return sock:send(packet)
 end
@@ -562,9 +574,10 @@ function _M.connect(self, opts)
     pos = pos + 9 -- skip filler
 
     -- two lower bytes
-    self._server_capabilities, pos = _get_byte2(packet, pos)
+    local capabilities  -- server capabilities
+    capabilities, pos = _get_byte2(packet, pos)
 
-    --print("server capabilities: ", self._server_capabilities)
+    -- print(format("server capabilities: %#x", capabilities))
 
     self._server_lang = strbyte(packet, pos)
     pos = pos + 1
@@ -578,10 +591,9 @@ function _M.connect(self, opts)
     local more_capabilities
     more_capabilities, pos = _get_byte2(packet, pos)
 
-    self._server_capabilities = bor(self._server_capabilities,
-                                    lshift(more_capabilities, 16))
+    capabilities = bor(capabilities, lshift(more_capabilities, 16))
 
-    --print("server capabilities: ", self._server_capabilities)
+    --print("server capabilities: ", capabilities)
 
     -- local len = strbyte(packet, pos)
     local len = 21 - 8 - 1
@@ -598,12 +610,37 @@ function _M.connect(self, opts)
     scramble = scramble .. scramble_part2
     --print("scramble: ", _dump(scramble))
 
+    local client_flags = 0x3f7cf;
+
+    local ssl_verify = opts.ssl_verify
+    local use_ssl = opts.ssl or ssl_verify
+
+    if use_ssl then
+        if band(capabilities, CLIENT_SSL) == 0 then
+            return nil, "ssl disabled on server"
+        end
+
+        -- send a SSL Request Packet
+        local req = _set_byte4(bor(client_flags, CLIENT_SSL))
+                    .. _set_byte4(self._max_packet_size)
+                    .. "\0" -- TODO: add support for charset encoding
+                    .. strrep("\0", 23)
+
+        local packet_len = 4 + 4 + 1 + 23
+        local bytes, err = _send_packet(self, req, packet_len)
+        if not bytes then
+            return nil, "failed to send client authentication packet: " .. err
+        end
+
+        local ok, err = sock:sslhandshake(false, nil, ssl_verify)
+        if not ok then
+            return nil, "failed to do ssl handshake: " .. (err or "")
+        end
+    end
+
     local password = opts.password or ""
 
     local token = _compute_token(password, scramble)
-
-    -- local client_flags = self._server_capabilities
-    local client_flags = 260047;
 
     --print("token: ", _dump(token))
 
