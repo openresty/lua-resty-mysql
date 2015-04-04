@@ -405,7 +405,7 @@ Below is a trivial example for this:
     while err == "again" do
         res, err, errno, sqlstate = db:read_result()
         if not res then
-            ngx.log(ngx.ERR, "bad result #2: ", err, ": ", errno, ": ", sqlstate, ".")
+            ngx.log(ngx.ERR, "bad result #", i, ": ", err, ": ", errno, ": ", sqlstate, ".")
             return ngx.exit(500)
         end
 
