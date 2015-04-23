@@ -174,9 +174,10 @@ local function _get_byte8(data, i)
     local a, b, c, d, e, f, g, h = strbyte(data, i, i + 7)
 
     -- XXX workaround for the lack of 64-bit support in bitop:
-    local lo = bor(a, lshift(b, 8), lshift(c, 16), lshift(d, 24))
+    -- XXX return results in the range of signed 32 bit numbers
+    local lo = bor(a, lshift(b, 8), lshift(c, 16))
     local hi = bor(e, lshift(f, 8), lshift(g, 16), lshift(h, 24))
-    return lo + hi * 4294967296, i + 8
+    return lo + 16777216 * d + hi * 4294967296, i + 8
 
     -- return bor(a, lshift(b, 8), lshift(c, 16), lshift(d, 24), lshift(e, 32),
                -- lshift(f, 40), lshift(g, 48), lshift(h, 56)), i + 8

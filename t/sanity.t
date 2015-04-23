@@ -1642,3 +1642,61 @@ failed to connect: timeout
 failed to connect: timeout
 --- error_log
 lua tcp socket queued connect timed out
+
+
+
+=== TEST 27: large insert_id exceeding a 32-bit signed integer value
+--- http_config eval: $::HttpConfig
+--- server_config
+        content_by_lua_block {
+            local mysql = require("resty.mysql")
+            local create_sql = [[
+                CREATE TABLE `large_t` (
+                    `id` bigint(11) NOT NULL AUTO_INCREMENT,
+                    PRIMARY KEY (`id`)
+                ) AUTO_INCREMENT=
+            ]] .. (math.pow(2, 32) - 1)
+            local drop_sql = [[
+                DROP TABLE IF EXISTS `large_t`;
+            ]]
+            local insert_sql = [[
+                INSERT INTO `large_t` VALUES(NULL);
+            ]]
+            local db, err = mysql:new()
+            if not db then
+                ngx.say("failed to instantiate mysql: ", err)
+                return
+            end
+            db:set_timeout(1000)
+            local ok, err = db:connect{
+                                       host = "$TEST_NGINX_MYSQL_HOST",
+                                       port = $TEST_NGINX_MYSQL_PORT,
+                                       database="ngx_test",
+                                       user="ngx_test",
+                                       password="ngx_test"}
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+            local res, err = db:query(drop_sql)
+            if not res then
+                ngx.say("drop table error:" .. err)
+                return
+            end
+            local res, err = db:query(create_sql)
+            if not res then
+                ngx.say("create table error:" .. err)
+                return
+            end
+            local res, err = db:query(insert_sql)
+            if not res then
+                ngx.say("insert table error:" .. err)
+                return
+            else
+                ngx.say(res.insert_id)
+            end
+        }
+--- response_body
+4294967295
+--- no_error_log
+[error]
