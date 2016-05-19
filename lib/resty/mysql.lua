@@ -764,7 +764,8 @@ _M.send_query = send_query
 
 local function read_result(self, est_nrows)
     if self.state ~= STATE_COMMAND_SENT then
-        return nil, "cannot read result in the current context: " .. self.state
+        return nil, "cannot read result in the current context: "
+                    .. (self.state or "nil")
     end
 
     local sock = self.sock
