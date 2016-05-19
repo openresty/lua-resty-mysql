@@ -46,6 +46,7 @@ local _M = { _VERSION = '0.15' }
 local STATE_CONNECTED = 1
 local STATE_COMMAND_SENT = 2
 
+local COM_QUIT = 0x01
 local COM_QUERY = 0x03
 local CLIENT_SSL = 0x0800
 
@@ -722,6 +723,11 @@ function _M.close(self)
     end
 
     self.state = nil
+
+    local bytes, err = _send_packet(self, strchar(COM_QUIT), 1)
+    if not bytes then
+        return nil, err
+    end
 
     return sock:close()
 end
