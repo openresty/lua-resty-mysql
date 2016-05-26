@@ -825,7 +825,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}\], err:nil$
+result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":null\}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
@@ -884,7 +884,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql \d\.\S+\.
 sent 30 bytes\.
-result: (?:{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0}|{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]})$
+result: (?:\{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0}|{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]\})$
 --- no_error_log
 [error]
 
@@ -1037,7 +1037,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}\], err:nil$
+result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":null\}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
@@ -1109,7 +1109,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}\], err:nil$
+result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":null\}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
