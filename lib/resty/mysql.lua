@@ -9,6 +9,7 @@ local strchar = string.char
 local strfind = string.find
 local format = string.format
 local strrep = string.rep
+local strsub = string.sub
 local null = ngx.null
 local band = bit.band
 local bxor = bit.bxor
@@ -71,6 +72,21 @@ converters[0x09] = tonumber  -- int24
 converters[0x0d] = tonumber  -- year
 converters[0xf6] = tonumber  -- newdecimal
 
+local function _split(str, seq)
+   local list = {}
+   local pos  = 1
+   while 1 do
+       local first, last = strfind(str, seq, pos)
+       if first then
+           insert(list, strsub(str, pos, first-1))
+           pos = last+1
+       else
+           insert(list, strsub(str, pos))
+           break
+       end
+   end
+   return list
+end
 
 local function _get_byte2(data, i)
     local a, b = strbyte(data, i, i + 1)
@@ -490,6 +506,14 @@ function _M.connect(self, opts)
     local sock = self.sock
     if not sock then
         return nil, "not initialized"
+    end
+
+    local dsn = opts.dsn
+    if dsn then
+        for _, value in pairs(_split(dsn, ";")) do
+            local _item = _split(value, "=")
+            opts[_item[1]] = _item[2]
+        end
     end
 
     local max_packet_size = opts.max_packet_size
