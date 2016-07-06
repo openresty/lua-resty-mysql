@@ -79,14 +79,14 @@ Synopsis
 
                 -- or connect to a unix domain socket file listened
                 -- by a mysql server:
-                --     local ok, err, errno, sqlstate =
+                --     local ok, err, errcode, sqlstate =
                 --           db:connect{
                 --              path = "/path/to/mysql.sock",
                 --              database = "ngx_test",
                 --              user = "ngx_test",
                 --              password = "ngx_test" }
 
-                local ok, err, errno, sqlstate = db:connect{
+                local ok, err, errcode, sqlstate = db:connect{
                     host = "127.0.0.1",
                     port = 3306,
                     database = "ngx_test",
@@ -95,35 +95,35 @@ Synopsis
                     max_packet_size = 1024 * 1024 }
 
                 if not ok then
-                    ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                    ngx.say("failed to connect: ", err, ": ", errcode, " ", sqlstate)
                     return
                 end
 
                 ngx.say("connected to mysql.")
 
-                local res, err, errno, sqlstate =
+                local res, err, errcode, sqlstate =
                     db:query("drop table if exists cats")
                 if not res then
-                    ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                    ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
                     return
                 end
 
-                res, err, errno, sqlstate =
+                res, err, errcode, sqlstate =
                     db:query("create table cats "
                              .. "(id serial primary key, "
                              .. "name varchar(5))")
                 if not res then
-                    ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                    ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
                     return
                 end
 
                 ngx.say("table cats created.")
 
-                res, err, errno, sqlstate =
+                res, err, errcode, sqlstate =
                     db:query("insert into cats (name) "
                              .. "values (\'Bob\'),(\'\'),(null)")
                 if not res then
-                    ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                    ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
                     return
                 end
 
@@ -132,10 +132,10 @@ Synopsis
 
                 -- run a select query, expected about 10 rows in
                 -- the result set:
-                res, err, errno, sqlstate =
+                res, err, errcode, sqlstate =
                     db:query("select * from cats order by id asc", 10)
                 if not res then
-                    ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                    ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
                     return
                 end
 
@@ -284,9 +284,9 @@ You should use the [read_result](#read_result) method to read the MySQL replies 
 
 read_result
 -----------
-`syntax: res, err, errno, sqlstate = db:read_result()`
+`syntax: res, err, errcode, sqlstate = db:read_result()`
 
-`syntax: res, err, errno, sqlstate = db:read_result(nrows)`
+`syntax: res, err, errcode, sqlstate = db:read_result(nrows)`
 
 Reads in one result returned from the MySQL server.
 
@@ -315,7 +315,7 @@ For queries that do not correspond to a result set, it returns a Lua table like 
 
 If more results are following the current result, a second `err` return value will be given the string `again`. One should always check this (second) return value and if it is `again`, then she should call this method again to retrieve more results. This usually happens when the original query contains multiple statements (separated by semicolon in the same query string) or calling a MySQL procedure. See also [Multi-Resultset Support](#multi-resultset-support).
 
-In case of errors, this method returns at most 4 values: `nil`, `err`, `errno`, and `sqlstate`. The `err` return value contains a string describing the error, the `errno` return value holds the MySQL error code (a numerical value), and finally, the `sqlstate` return value contains the standard SQL error code that consists of 5 characters. Note that, the `errno` and `sqlstate` might be `nil` if MySQL does not return them.
+In case of errors, this method returns at most 4 values: `nil`, `err`, `errcode`, and `sqlstate`. The `err` return value contains a string describing the error, the `errcode` return value holds the MySQL error code (a numerical value), and finally, the `sqlstate` return value contains the standard SQL error code that consists of 5 characters. Note that, the `errcode` and `sqlstate` might be `nil` if MySQL does not return them.
 
 The optional argument `nrows` can be used to specify an approximate number of rows for the result set. This value can be used
 to pre-allocate space in the resulting Lua table for the result set. By default, it takes the value 4.
@@ -324,9 +324,9 @@ to pre-allocate space in the resulting Lua table for the result set. By default,
 
 query
 -----
-`syntax: res, err, errno, sqlstate = db:query(query)`
+`syntax: res, err, errcode, sqlstate = db:query(query)`
 
-`syntax: res, err, errno, sqlstate = db:query(query, nrows)`
+`syntax: res, err, errcode, sqlstate = db:query(query, nrows)`
 
 This is a shortcut for combining the [send_query](#send_query) call and the first [read_result](#read_result) call.
 
@@ -381,7 +381,7 @@ Below is a trivial example for this:
     local mysql = require "resty.mysql"
 
     local db = mysql:new()
-    local ok, err, errno, sqlstate = db:connect({
+    local ok, err, errcode, sqlstate = db:connect({
         host = "127.0.0.1",
         port = 3306,
         database = "world",
@@ -389,13 +389,13 @@ Below is a trivial example for this:
         password = "pass"})
 
     if not ok then
-        ngx.log(ngx.ERR, "failed to connect: ", err, ": ", errno, " ", sqlstate)
+        ngx.log(ngx.ERR, "failed to connect: ", err, ": ", errcode, " ", sqlstate)
         return ngx.exit(500)
     end
 
-    res, err, errno, sqlstate = db:query("select 1; select 2; select 3;")
+    res, err, errcode, sqlstate = db:query("select 1; select 2; select 3;")
     if not res then
-        ngx.log(ngx.ERR, "bad result #1: ", err, ": ", errno, ": ", sqlstate, ".")
+        ngx.log(ngx.ERR, "bad result #1: ", err, ": ", errcode, ": ", sqlstate, ".")
         return ngx.exit(500)
     end
 
@@ -403,9 +403,9 @@ Below is a trivial example for this:
 
     local i = 2
     while err == "again" do
-        res, err, errno, sqlstate = db:read_result()
+        res, err, errcode, sqlstate = db:read_result()
         if not res then
-            ngx.log(ngx.ERR, "bad result #", i, ": ", err, ": ", errno, ": ", sqlstate, ".")
+            ngx.log(ngx.ERR, "bad result #", i, ": ", err, ": ", errcode, ": ", sqlstate, ".")
             return ngx.exit(500)
         end
 
@@ -436,7 +436,7 @@ It is usually convenient to use the [lua-cjson](http://www.kyne.com.au/~mark/sof
 ```lua
     local cjson = require "cjson"
     ...
-    local res, err, errno, sqlstate = db:query("select * from cats")
+    local res, err, errcode, sqlstate = db:query("select * from cats")
     if res then
         print("res: ", cjson.encode(res))
     end
