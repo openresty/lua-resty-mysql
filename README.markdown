@@ -315,7 +315,7 @@ For queries that do not correspond to a result set, it returns a Lua table like 
 
 If more results are following the current result, a second `err` return value will be given the string `again`. One should always check this (second) return value and if it is `again`, then she should call this method again to retrieve more results. This usually happens when the original query contains multiple statements (separated by semicolon in the same query string) or calling a MySQL procedure. See also [Multi-Resultset Support](#multi-resultset-support).
 
-In case of errors, this method returns at most 4 values: `nil`, `err`, `errcode`, and `sqlstate`. The `err` return value contains a string describing the error, the `errcode` return value holds the MySQL error code (a numerical value), and finally, the `sqlstate` return value contains the standard SQL error code that consists of 5 characters. Note that, the `errcode` and `sqlstate` might be `nil` if MySQL does not return them.
+In case of errors, this method returns at most 4 values: `nil`, `err`, `errno`, and `sqlstate`. The `err` return value contains a string describing the error, the `errno` return value holds the MySQL error code (a numerical value), and finally, the `sqlstate` return value contains the standard SQL error code that consists of 5 characters. Note that, the `errno` and `sqlstate` might be `nil` if MySQL does not return them.
 
 The optional argument `nrows` can be used to specify an approximate number of rows for the result set. This value can be used
 to pre-allocate space in the resulting Lua table for the result set. By default, it takes the value 4.
@@ -324,9 +324,9 @@ to pre-allocate space in the resulting Lua table for the result set. By default,
 
 query
 -----
-`syntax: res, err, errcode, sqlstate = db:query(query)`
+`syntax: res, err, errno, sqlstate = db:query(query)`
 
-`syntax: res, err, errcode, sqlstate = db:query(query, nrows)`
+`syntax: res, err, errno, sqlstate = db:query(query, nrows)`
 
 This is a shortcut for combining the [send_query](#send_query) call and the first [read_result](#read_result) call.
 
@@ -436,7 +436,7 @@ It is usually convenient to use the [lua-cjson](http://www.kyne.com.au/~mark/sof
 ```lua
     local cjson = require "cjson"
     ...
-    local res, err, errcode, sqlstate = db:query("select * from cats")
+    local res, err, errno, sqlstate = db:query("select * from cats")
     if res then
         print("res: ", cjson.encode(res))
     end
