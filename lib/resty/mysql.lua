@@ -812,7 +812,7 @@ local function _send_com_package(self, com_package, packet_type)
 
     self.state = STATE_COMMAND_SENT
 
-    --print("com_package sent ", bytes, " bytes")
+    --print("package sent ", bytes, " bytes")
 
     return bytes
 end

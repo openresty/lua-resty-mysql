@@ -161,6 +161,58 @@ Synopsis
     }
 ```
 
+
+The example for using mysql's prepare-statement:
+
+```nginx
+
+    # you do not need the following line if you are using
+    # the ngx_openresty bundle:
+    lua_package_path "/path/to/lua-resty-mysql/lib/?.lua;;";
+
+    server {
+        location /test {
+            content_by_lua '
+                local mysql = require "resty.mysql"
+                local json  = require "cjson"
+
+                local db, err = mysql:new()
+                if not db then
+                    ngx.say("failed to instantiate mysql: ", err)
+                    return
+                end
+
+                db:set_timeout(1000) -- 1 sec
+
+                local ok, err, errcode, sqlstate = db:connect({
+                            host = "45.32.250.200",
+                            port = 3306,
+                            database = "test",
+                            user = "hug",
+                            password = "123456",
+                            max_packet_size = 1024 * 1024 },
+                            true)
+
+                if not ok then
+                    ngx.say("failed to connect: ", err, ": ", errcode, " ", sqlstate)
+                    return
+                end
+
+                ngx.say("connected to mysql.")
+
+
+                local res, err = db:run([[select * from test where id = ?]], 1)
+                if err then
+                    ngx.say("run failed: ", err)
+                    return
+                end
+
+                ngx.say("run success: ", json.encode(res))
+            ';
+        }
+    }
+```
+
 [Back to TOC](#table-of-contents)
 
 Methods
