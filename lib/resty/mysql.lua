@@ -2,6 +2,7 @@
 
 
 local bit = require "bit"
+local ffi = require("ffi")
 local sub = string.sub
 local tcp = ngx.socket.tcp
 local strbyte = string.byte
@@ -32,6 +33,17 @@ then
     error("ngx_lua 0.9.11+ required")
 end
 
+ffi.cdef[[
+    typedef union { 
+        char buf[4];
+        float f;
+    } point_f;
+
+    typedef union { 
+        char buf[8];
+        double d;
+    } point_d;
+]]
 
 local ok, new_tab = pcall(require, "table.new")
 if not ok then
@@ -241,11 +253,6 @@ end
 
 local function _recv_packet(self)
     local sock = self.sock
-    for k,v in pairs(sock) do
-        if "userdata" ~= type(v) then
-            print("sock k -> ", k, " v -> ", v)
-        end
-    end
 
     local data, err = sock:receive(4) -- packet header
     if not data then
@@ -1176,11 +1183,17 @@ local function _parse_result_data_packet(data, pos, cols, compact)
         elseif mysql_data_type.MYSQL_TYPE_LONGLONG == typ then
             value, pos = _get_byte8(data, pos)
         elseif mysql_data_type.MYSQL_TYPE_FLOAT == typ then
-            value, pos = _get_byte4(data, pos)
-            value = tonumber(value)
+            value = data:sub(pos, pos+3)
+            pos = pos + 4
+            
+            local v = ffi.new("point_f", value)
+            value = v.f
         elseif mysql_data_type.MYSQL_TYPE_DOUBLE == typ then
-            value, pos = _get_byte8(data, pos)
-            value = tonumber(value)
+            value = data:sub(pos, pos+7)
+            pos = pos + 8
+            
+            local v = ffi.new("point_d", value)
+            value = v.d
         else
             value, pos = _from_length_coded_str(data, pos)
         end
