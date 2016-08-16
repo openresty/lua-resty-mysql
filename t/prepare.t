@@ -66,7 +66,7 @@ __DATA__
             local ljson = require "ljson"
             ngx.say("prepare success:", ljson.encode(stmt)) 
 
-            local res, err = db:execute(stmt, 1, 2, 3)
+            local res, err = db:execute(stmt.statement_id, 1, 2, 3)
             if err then
                 ngx.say("execute failed.", err)
             end
