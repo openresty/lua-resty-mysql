@@ -18,7 +18,6 @@ local lshift = bit.lshift
 local rshift = bit.rshift
 local tohex = bit.tohex
 local sha1 = ngx.sha1_bin
-local tab_insert = table.insert
 local concat = table.concat
 local unpack = unpack
 local setmetatable = setmetatable
@@ -33,6 +32,7 @@ then
     error("ngx_lua 0.9.11+ required")
 end
 
+
 ffi.cdef[[
     typedef union { 
         char buf[4];
@@ -44,6 +44,7 @@ ffi.cdef[[
         double d;
     } point_d;
 ]]
+
 
 local ok, new_tab = pcall(require, "table.new")
 if not ok then
@@ -489,6 +490,7 @@ local function _parse_row_data_packet(data, cols, compact)
 
         if compact then
             row[i] = value
+
         else
             row[name] = value
         end
@@ -800,8 +802,6 @@ local function _send_com_package(self, com_package, packet_type)
                     .. (self.state or "nil")
     end
 
-    packet_type = packet_type or COM_QUERY
-
     local sock = self.sock
     if not sock then
         return nil, "not initialized"
@@ -825,7 +825,7 @@ local function _send_com_package(self, com_package, packet_type)
 end
 
 
-function _M.send_query( self, query )
+function _M.send_query(self, query)
     local bytes, err = _send_com_package(self, query)
     return bytes, err
 end
@@ -952,7 +952,7 @@ function _M.query(self, query, est_nrows)
 end
 
 
-local function _read_prepare_init( self )
+local function _read_prepare_init(self)
     local packet, typ, err = _recv_packet(self)
     if not packet then
         return nil, err
@@ -980,7 +980,6 @@ local function _read_prepare_init( self )
     end
 
     return stmt
-
 end
 
 
@@ -993,15 +992,15 @@ local function _read_prepare_parameters(self, stmt)
         end
 
         if typ ~= 'DATA' then
-            return nil, "_read prepare parameters type: " .. typ
+            return nil, "bad prepare parameters response type: " .. typ
         end
     end
 
-    return
+    return true
 end
 
 
-local function _read_eof_packet( self )
+local function _read_eof_packet(self)
     local packet, typ, err = _recv_packet(self)
     if not packet then
         return err
@@ -1016,7 +1015,7 @@ local function _read_eof_packet( self )
 end
 
 
-local function _read_result_set( self, field_count )
+local function _read_result_set(self, field_count)
     local result_set = new_tab(0, 2)
     local packet, typ, err
 
@@ -1053,8 +1052,9 @@ local function _read_prepare_reponse(self)
     end
 
     if stmt.parameters > 0 then
-        err = _read_prepare_parameters(self, stmt)
-        if err then
+        local ok
+        ok, err = _read_prepare_parameters(self, stmt)
+        if not ok then
             self.state = STATE_CONNECTED
             return nil, err
         end
@@ -1099,7 +1099,7 @@ function _M.prepare(self, sql)
 end
 
 
-local function _encode_param_types( args )
+local function _encode_param_types(args)
     local buf = new_tab(#args, 0)
 
     for i, _ in ipairs(args) do
@@ -1110,7 +1110,7 @@ local function _encode_param_types( args )
 end
 
 
-local function _encode_param_values( args )
+local function _encode_param_values(args)
     local buf = new_tab(#args, 0)
 
     for i, v in ipairs(args) do
@@ -1121,7 +1121,7 @@ local function _encode_param_values( args )
 end
 
 
-local function _read_result( self )
+local function _read_result(self)
     if self.state ~= STATE_COMMAND_SENT then
         return nil, "cannot read result in the current context: "
                     .. (self.state or "nil")
@@ -1174,22 +1174,22 @@ local function _parse_result_data_packet(data, pos, cols, compact)
         local typ = col.type
         local name = col.name
 
-        if mysql_data_type.MYSQL_TYPE_TINY == typ then
+        if     typ == mysql_data_type.MYSQL_TYPE_TINY then
             value, pos = _get_byte1(data, pos)
-        elseif mysql_data_type.MYSQL_TYPE_SHORT == typ then
+        elseif typ == mysql_data_type.MYSQL_TYPE_SHORT then
             value, pos = _get_byte2(data, pos)
-        elseif mysql_data_type.MYSQL_TYPE_LONG == typ then
+        elseif typ == mysql_data_type.MYSQL_TYPE_LONG then
             value, pos = _get_byte4(data, pos)
-        elseif mysql_data_type.MYSQL_TYPE_LONGLONG == typ then
+        elseif typ == mysql_data_type.MYSQL_TYPE_LONGLONG then
             value, pos = _get_byte8(data, pos)
-        elseif mysql_data_type.MYSQL_TYPE_FLOAT == typ then
-            value = data:sub(pos, pos+3)
+        elseif typ == mysql_data_type.MYSQL_TYPE_FLOAT then
+            value = data:sub(pos, pos + 3)
             pos = pos + 4
             
             local v = ffi.new("point_f", value)
             value = v.f
-        elseif mysql_data_type.MYSQL_TYPE_DOUBLE == typ then
-            value = data:sub(pos, pos+7)
+        elseif typ == mysql_data_type.MYSQL_TYPE_DOUBLE then
+            value = data:sub(pos, pos + 7)
             pos = pos + 8
             
             local v = ffi.new("point_d", value)
@@ -1211,7 +1211,7 @@ local function _parse_result_data_packet(data, pos, cols, compact)
 end
 
 
-local function _fetch_all_rows( self, res )
+local function _fetch_all_rows(self, res)
     if self.state ~= STATE_COMMAND_SENT then
         return nil, "cannot read result in the current context: "
                     .. (self.state or "nil")
@@ -1260,19 +1260,22 @@ function _M.execute(self, statement_id, ...)
     local value_parm = _encode_param_values(args)
     
     local packet = new_tab(8, 0)
-    tab_insert(packet, _set_byte4(statement_id) )
-    tab_insert(packet, strchar(0) )       -- flag
-    tab_insert(packet, _set_byte4(1) )    -- iteration-count
+    packet[1] = _set_byte4(statement_id)
+    packet[2] = strchar(0)        -- flag
+    packet[3] = _set_byte4(1)     -- iteration-count
     
     local bitmap_len =  (#args + 7) / 8 
-    for _=1, bitmap_len do
+    for j = 4, 3 + bitmap_len do
         -- NULL-bitmap, length: (num-params+7)/8
-        tab_insert(packet, strchar(0))
+        packet[j] = strchar(0)
+        i = j
     end
-    tab_insert(packet, strchar(1))
-    tab_insert(packet, type_parm)
-    tab_insert(packet, value_parm)
-    packet = concat( packet, "" )
+    packet[i+1] = strchar(1)
+    packet[i+2] = type_parm
+    packet[i+3] = value_parm
+    print("package len: ", #packet)
+    packet = concat(packet, "")
+    -- print("execute pkg: ", _dumphex(packet))
 
     local _, err = _send_com_package(self, packet, COM_STMT_EXECUTE)
     if err ~= nil then
@@ -1316,7 +1319,7 @@ local function _shallow_copy(orig)
 end
 
 
-function _M.run( self, prepare_sql, ... )
+function _M.run(self, prepare_sql, ...)
     local opts = _shallow_copy(self.opts)
     local db, err, res, errcode, sqlstate, used_times, _
 
@@ -1366,7 +1369,7 @@ function _M.run( self, prepare_sql, ... )
         return nil, err
     end
 
-    db:set_keepalive(1000*60*5, 10)
+    db:set_keepalive(1000 * 60 * 5, 10)
 
     return res
 end
