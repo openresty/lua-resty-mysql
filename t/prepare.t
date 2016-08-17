@@ -30,7 +30,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: bad user
+=== TEST 1: prepare
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -41,8 +41,8 @@ __DATA__
             db:set_timeout(1000) -- 1 sec
 
             local ok, err, errno, sqlstate = db:connect({
-                host = "localhost",
-                port = 3306,
+                host = "$TEST_NGINX_MYSQL_HOST",
+                port = $TEST_NGINX_MYSQL_PORT,
                 database = "ngx_test",
                 user = "ngx_test",
                 password = "ngx_test"})
