@@ -19,7 +19,6 @@ local rshift = bit.rshift
 local tohex = bit.tohex
 local sha1 = ngx.sha1_bin
 local concat = table.concat
-local unpack = unpack
 local setmetatable = setmetatable
 local error = error
 local tonumber = tonumber
@@ -1163,6 +1162,7 @@ local function _parse_result_data_packet(data, pos, cols, compact)
     local row
     if compact then
         row = new_tab(ncols, 0)
+        
     else
         row = new_tab(0, ncols)
     end
@@ -1176,24 +1176,30 @@ local function _parse_result_data_packet(data, pos, cols, compact)
 
         if     typ == mysql_data_type.MYSQL_TYPE_TINY then
             value, pos = _get_byte1(data, pos)
+
         elseif typ == mysql_data_type.MYSQL_TYPE_SHORT then
             value, pos = _get_byte2(data, pos)
+
         elseif typ == mysql_data_type.MYSQL_TYPE_LONG then
             value, pos = _get_byte4(data, pos)
+
         elseif typ == mysql_data_type.MYSQL_TYPE_LONGLONG then
             value, pos = _get_byte8(data, pos)
+
         elseif typ == mysql_data_type.MYSQL_TYPE_FLOAT then
             value = data:sub(pos, pos + 3)
             pos = pos + 4
             
             local v = ffi.new("point_f", value)
             value = v.f
+
         elseif typ == mysql_data_type.MYSQL_TYPE_DOUBLE then
             value = data:sub(pos, pos + 7)
             pos = pos + 8
             
             local v = ffi.new("point_d", value)
             value = v.d
+
         else
             value, pos = _from_length_coded_str(data, pos)
         end
@@ -1202,6 +1208,7 @@ local function _parse_result_data_packet(data, pos, cols, compact)
 
         if compact then
             row[i] = value
+            
         else
             row[name] = value
         end
@@ -1265,6 +1272,7 @@ function _M.execute(self, statement_id, ...)
     packet[3] = _set_byte4(1)     -- iteration-count
     
     local bitmap_len =  (#args + 7) / 8 
+    local i
     for j = 4, 3 + bitmap_len do
         -- NULL-bitmap, length: (num-params+7)/8
         packet[j] = strchar(0)
@@ -1273,7 +1281,6 @@ function _M.execute(self, statement_id, ...)
     packet[i+1] = strchar(1)
     packet[i+2] = type_parm
     packet[i+3] = value_parm
-    print("package len: ", #packet)
     packet = concat(packet, "")
     -- print("execute pkg: ", _dumphex(packet))
 
@@ -1312,6 +1319,7 @@ local function _shallow_copy(orig)
         for orig_key, orig_value in pairs(orig) do
             copy[orig_key] = orig_value
         end
+        
     else -- number, string, boolean, etc
         copy = orig
     end
@@ -1335,6 +1343,7 @@ function _M.run(self, prepare_sql, ...)
     if host then
         local port = opts.port or 3306
         pool = pool .. host .. ":" .. port .. ":" .. prepare_sql
+        
     else
         local path = opts.path
         if not path then
