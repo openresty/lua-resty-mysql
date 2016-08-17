@@ -1002,7 +1002,7 @@ end
 local function _read_eof_packet(self)
     local packet, typ, err = _recv_packet(self)
     if not packet then
-        return err
+        return nil, err
     end
 
     if typ ~= 'EOF' then
@@ -1010,7 +1010,7 @@ local function _read_eof_packet(self)
             .. "expected"
     end
 
-    return 
+    return true
 end
 
 
@@ -1044,6 +1044,7 @@ local function _read_prepare_reponse(self)
                     .. (self.state or "nil")
     end
 
+    local ok
     local stmt, err = _read_prepare_init(self)
     if err then
         self.state = STATE_CONNECTED
@@ -1051,15 +1052,14 @@ local function _read_prepare_reponse(self)
     end
 
     if stmt.parameters > 0 then
-        local ok
         ok, err = _read_prepare_parameters(self, stmt)
         if not ok then
             self.state = STATE_CONNECTED
             return nil, err
         end
 
-        err = _read_eof_packet(self)
-        if err ~= nil then
+        ok, err = _read_eof_packet(self)
+        if not ok then
             self.state = STATE_CONNECTED
             return nil, err
         end
@@ -1072,8 +1072,8 @@ local function _read_prepare_reponse(self)
             return nil, err
         end
 
-        err = _read_eof_packet(self)
-        if err ~= nil then
+        ok, err = _read_eof_packet(self)
+        if not ok then
             self.state = STATE_CONNECTED
             return nil, err
         end
@@ -1148,8 +1148,9 @@ local function _read_result(self)
         return nil, err
     end
 
-    err = _read_eof_packet(self)
-    if err ~= nil then
+    local ok
+    ok, err = _read_eof_packet(self)
+    if not ok then
         return nil, err
     end
 
