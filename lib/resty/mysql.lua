@@ -1081,7 +1081,7 @@ local function _read_prepare_reponse(self)
 
     self.state = STATE_CONNECTED
 
-    return stmt, err
+    return stmt.statement_id, err
 end
 
 
@@ -1356,7 +1356,8 @@ function _M.run(self, prepare_sql, ...)
 
     ok, err, errcode, sqlstate = db:connect(opts)
     if not ok then
-        return nil, "failed to connect: " .. err .. ": " .. errcode .. " " .. sqlstate
+        return nil, "failed to connect: " .. err .. ": " .. errcode 
+                        .. " " .. sqlstate
     end
 
     used_times, err = db:get_reused_times()
