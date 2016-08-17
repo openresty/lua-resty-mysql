@@ -825,7 +825,7 @@ end
 
 
 function _M.send_query(self, query)
-    local bytes, err = _send_com_package(self, query)
+    local bytes, err = _send_com_package(self, query, COM_QUERY)
     return bytes, err
 end
 
