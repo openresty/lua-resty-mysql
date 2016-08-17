@@ -34,8 +34,9 @@ __DATA__
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
-        content_by_lua '
+        content_by_lua_block {
             local mysql = require "resty.mysql"
+            local ljson = require "ljson"
             local db = mysql:new()
 
             db:set_timeout(1000) -- 1 sec
@@ -54,35 +55,84 @@ __DATA__
 
             ngx.say("connected to mysql.")
 
-
-            db:query([[create table prepare_test(id integer)]])
-            db:query("insert into prepare_test(id) values(1)")
-
-            local stmt, err = db:prepare([[SELECT id as a, id as b, id as c FROM prepare_test WHERE id = ? OR id = ? OR id = ?]])
-            if err then
-                ngx.say("prepare failed:", err)
+            local res, err, errno, sqlstate = db:query("drop table if exists cats")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
             end
 
-            local ljson = require "ljson"
-            ngx.say("prepare success:", ljson.encode(stmt)) 
+            ngx.say("table cats dropped.")
+            
+            local res, err, errcode, sqlstate =
+                db:query("drop table if exists cats")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                return
+            end
 
-            local res, err = db:execute(stmt.statement_id, 1, 2, 3)
+            res, err, errcode, sqlstate =
+                db:query("create table cats "
+                         .. "(id serial primary key, "
+                         .. "name varchar(5))")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("table cats created.")
+
+            res, err, errcode, sqlstate =
+                db:query("insert into cats (name) "
+                         .. "values ('Bob'),(''),(null)")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say(res.affected_rows, " rows inserted into table cats ",
+                    "(last insert id: ", res.insert_id, ")")
+
+            local statement_id, err = db:prepare([[SELECT id
+                                     FROM cats WHERE id = ? OR id = ?]])
+            if err then
+                ngx.say("prepare failed:", err)
+                return
+            end
+
+            ngx.say("prepare success:", statement_id)
+
+            local res, err = db:execute(statement_id, 1, 2)
             if err then
                 ngx.say("execute failed.", err)
+                return
             end
 
             ngx.say("execute success:", ljson.encode(res))
 
-            db:query([[drop table prepare_test]])
-            
-            db:close()
-        ';
+            -- put it into the connection pool of size 100,
+            -- with 10 seconds max idle timeout
+            -- local ok, err = db:set_keepalive(10000, 100)
+            -- if not ok then
+            --     ngx.say("failed to set keepalive: ", err)
+            --     return
+            -- end
+
+            -- or just close the connection right away:
+            local ok, err = db:close()
+            if not ok then
+                ngx.say("failed to close: ", err)
+                return
+            end
+        }
     }
 --- request
 GET /t
 --- response_body
 connected to mysql.
-prepare success:{"columns":3,"field_count":0,"parameters":3,"result_set":{"field_count":3,"fields":[{"name":"a","type":3},{"name":"b","type":3},{"name":"c","type":3}]},"statement_id":1,"warnings":0}
-execute success:[{"a":1,"b":1,"c":1}]
+table cats dropped.
+table cats created.
+3 rows inserted into table cats (last insert id: 1)
+prepare success:1
+execute success:[{"id":1},{"id":2}]
 --- no_error_log
 [error]
