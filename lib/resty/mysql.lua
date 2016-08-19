@@ -867,6 +867,8 @@ local function _read_row_length_code( self, est_nrows, cols )
         rows[i] = row
     end
 
+    self.state = STATE_CONNECTED
+    
     return rows
 end
 
@@ -966,6 +968,8 @@ local function _read_row_bin_type( self, est_nrows, cols )
         rows[i] = row
     end
 
+    self.state = STATE_CONNECTED
+
     return rows
 end
 
@@ -1050,8 +1054,6 @@ local function _read_result(self, est_nrows, packet_type)
         return nil, "unexpected packet type " .. packet_type .. " for "
                     .. "the input parameters"
     end
-
-    self.state = STATE_CONNECTED
 
     return rows, err
 end
