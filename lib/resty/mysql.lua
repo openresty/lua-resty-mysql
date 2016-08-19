@@ -830,7 +830,151 @@ function _M.send_query(self, query)
 end
 
 
-local function read_result(self, est_nrows)
+local function _read_row_length_code(self, est_nrows, cols)
+    local compact = self.compact
+    local packet, typ, err
+
+    local rows = new_tab(est_nrows or 4, 0)
+    local i = 0
+    while true do
+        --print("reading a row")
+
+        packet, typ, err = _recv_packet(self)
+        if not packet then
+            return nil, err
+        end
+
+        if typ == 'EOF' then
+            local _, status_flags = _parse_eof_packet(packet)
+
+            --print("status flags: ", status_flags)
+
+            if band(status_flags, SERVER_MORE_RESULTS_EXISTS) ~= 0 then
+                return rows, "again"
+            end
+
+            break
+        end
+
+        -- if typ ~= 'DATA' then
+            -- return nil, 'bad row packet type: ' .. typ
+        -- end
+
+        -- typ == 'DATA'
+
+        local row = _parse_row_data_packet(packet, cols, compact)
+        i = i + 1
+        rows[i] = row
+    end
+
+    self.state = STATE_CONNECTED
+    
+    return rows
+end
+
+
+local function _parse_result_data_packet(data, pos, cols, compact)
+    local ncols = #cols
+    local row
+    if compact then
+        row = new_tab(ncols, 0)
+        
+    else
+        row = new_tab(0, ncols)
+    end
+
+    for i = 1, ncols do
+        local col = cols[i]
+        local value
+
+        local typ = col.type
+        local name = col.name
+
+        if     typ == mysql_data_type.MYSQL_TYPE_TINY then
+            value, pos = _get_byte1(data, pos)
+
+        elseif typ == mysql_data_type.MYSQL_TYPE_SHORT then
+            value, pos = _get_byte2(data, pos)
+
+        elseif typ == mysql_data_type.MYSQL_TYPE_LONG then
+            value, pos = _get_byte4(data, pos)
+
+        elseif typ == mysql_data_type.MYSQL_TYPE_LONGLONG then
+            value, pos = _get_byte8(data, pos)
+
+        elseif typ == mysql_data_type.MYSQL_TYPE_FLOAT then
+            value = data:sub(pos, pos + 3)
+            pos = pos + 4
+            
+            local v = ffi.new("point_f", value)
+            value = v.f
+
+        elseif typ == mysql_data_type.MYSQL_TYPE_DOUBLE then
+            value = data:sub(pos, pos + 7)
+            pos = pos + 8
+            
+            local v = ffi.new("point_d", value)
+            value = v.d
+
+        else
+            value, pos = _from_length_coded_str(data, pos)
+        end
+        
+        -- print("row field value: ", value, ", type: ", typ)
+
+        if compact then
+            row[i] = value
+            
+        else
+            row[name] = value
+        end
+    end
+
+    return row
+end
+
+
+local function _read_row_bin_type(self, est_nrows, cols)
+    local compact = self.compact
+    local field_count = #cols
+
+    local rows = new_tab(est_nrows or 4, 0)
+    local i = 0
+    while true do
+        local packet, typ, err = _recv_packet(self)
+        if not packet then
+            return nil, err
+        end
+
+        if typ == 'EOF' then
+            local _, status_flags = _parse_eof_packet(packet)
+            --print("status flags: ", status_flags)
+
+            if band(status_flags, SERVER_MORE_RESULTS_EXISTS) ~= 0 then
+                return rows, "again"
+            end
+
+            break
+        end
+
+        if typ ~= 'OK' then
+            return nil, "cannot fetch rows with unexpected packet:" .. typ
+        end
+
+        local pos = 1 + math.floor((field_count + 9) / 8) + 1
+
+        local row = _parse_result_data_packet(packet, pos, cols, compact)
+        i = i + 1
+        rows[i] = row
+    end
+
+    self.state = STATE_CONNECTED
+
+    return rows
+end
+
+
+local function _read_result(self, est_nrows, packet_type)
     if self.state ~= STATE_COMMAND_SENT then
         return nil, "cannot read result in the current context: "
                     .. (self.state or "nil")
@@ -899,44 +1043,23 @@ local function read_result(self, est_nrows)
 
     -- typ == 'EOF'
 
-    local compact = self.compact
+    local rows
+    if packet_type == COM_QUERY then
+        rows, err = _read_row_length_code(self, est_nrows, cols)
 
-    local rows = new_tab(est_nrows or 4, 0)
-    local i = 0
-    while true do
-        --print("reading a row")
+    elseif packet_type == COM_STMT_EXECUTE then
+        rows, err = _read_row_bin_type(self, est_nrows, cols)
 
-        packet, typ, err = _recv_packet(self)
-        if not packet then
-            return nil, err
-        end
-
-        if typ == 'EOF' then
-            local warning_count, status_flags = _parse_eof_packet(packet)
-
-            --print("status flags: ", status_flags)
-
-            if band(status_flags, SERVER_MORE_RESULTS_EXISTS) ~= 0 then
-                return rows, "again"
-            end
-
-            break
-        end
-
-        -- if typ ~= 'DATA' then
-            -- return nil, 'bad row packet type: ' .. typ
-        -- end
-
-        -- typ == 'DATA'
-
-        local row = _parse_row_data_packet(packet, cols, compact)
-        i = i + 1
-        rows[i] = row
+    else
+        return nil, "unexpected packet type " .. packet_type .. " for "
+                    .. "the input parameters"
     end
 
-    self.state = STATE_CONNECTED
+    return rows, err
+end
 
-    return rows
+local function read_result(self, est_nrows)
+    return _read_result(self, est_nrows, COM_QUERY)
 end
 _M.read_result = read_result
 
@@ -1120,148 +1243,6 @@ local function _encode_param_values(args)
 end
 
 
-local function _read_result(self)
-    if self.state ~= STATE_COMMAND_SENT then
-        return nil, "cannot read result in the current context: "
-                    .. (self.state or "nil")
-    end
-
-    local response = new_tab(0, 2)
-    local packet, typ, err = _recv_packet(self)
-    if not packet then
-        return nil, err
-    end
-
-    if typ == "ERR" then
-        local errno, msg, sqlstate = _parse_err_packet(packet)
-        return nil, msg, errno, sqlstate
-    end
-
-    if typ ~= 'DATA' then
-        return nil, "cannot read result with unexpected packet:" .. typ
-    end
-
-    response.field_count = strbyte(packet)
-
-    response.result_set, err = _read_result_set(self, response.field_count)
-    if err then
-        return nil, err
-    end
-
-    local ok
-    ok, err = _read_eof_packet(self)
-    if not ok then
-        return nil, err
-    end
-
-    return response
-end
-
-
-local function _parse_result_data_packet(data, pos, cols, compact)
-    local ncols = #cols
-    local row
-    if compact then
-        row = new_tab(ncols, 0)
-        
-    else
-        row = new_tab(0, ncols)
-    end
-
-    for i = 1, ncols do
-        local col = cols[i]
-        local value
-
-        local typ = col.type
-        local name = col.name
-
-        if     typ == mysql_data_type.MYSQL_TYPE_TINY then
-            value, pos = _get_byte1(data, pos)
-
-        elseif typ == mysql_data_type.MYSQL_TYPE_SHORT then
-            value, pos = _get_byte2(data, pos)
-
-        elseif typ == mysql_data_type.MYSQL_TYPE_LONG then
-            value, pos = _get_byte4(data, pos)
-
-        elseif typ == mysql_data_type.MYSQL_TYPE_LONGLONG then
-            value, pos = _get_byte8(data, pos)
-
-        elseif typ == mysql_data_type.MYSQL_TYPE_FLOAT then
-            value = data:sub(pos, pos + 3)
-            pos = pos + 4
-            
-            local v = ffi.new("point_f", value)
-            value = v.f
-
-        elseif typ == mysql_data_type.MYSQL_TYPE_DOUBLE then
-            value = data:sub(pos, pos + 7)
-            pos = pos + 8
-            
-            local v = ffi.new("point_d", value)
-            value = v.d
-
-        else
-            value, pos = _from_length_coded_str(data, pos)
-        end
-        
-        -- print("row field value: ", value, ", type: ", typ)
-
-        if compact then
-            row[i] = value
-            
-        else
-            row[name] = value
-        end
-    end
-
-    return row
-end
-
-
-local function _fetch_all_rows(self, res)
-    if self.state ~= STATE_COMMAND_SENT then
-        return nil, "cannot read result in the current context: "
-                    .. (self.state or "nil")
-    end
-
-    local field_count = res.result_set.field_count
-    local fields = res.result_set.fields
-
-    local rows = new_tab(4, 0)
-    local i = 0
-    while true do
-        local packet, typ, err = _recv_packet(self)
-        if not packet then
-            return nil, err
-        end
-
-        if typ == 'EOF' then
-            local _, status_flags = _parse_eof_packet(packet)
-            --print("status flags: ", status_flags)
-
-            if band(status_flags, SERVER_MORE_RESULTS_EXISTS) ~= 0 then
-                return rows, "again"
-            end
-
-            break
-        end
-
-        if typ ~= 'OK' then
-            return nil, "cannot fetch rows with unexpected packet:" .. typ
-        end
-
-        local pos = 1 + math.floor((field_count+9)/8) + 1
-
-        local row = _parse_result_data_packet(packet, pos, fields)
-        i = i + 1
-        rows[i] = row
-    end
-
-    return rows
-end
-
-
 function _M.execute(self, statement_id, ...)
     local args = {...}
     local type_parm  = _encode_param_types(args)
@@ -1275,13 +1256,13 @@ function _M.execute(self, statement_id, ...)
     local bitmap_len =  (#args + 7) / 8 
     local i
     for j = 4, 3 + bitmap_len do
-        -- NULL-bitmap, length: (num-params+7)/8
+        -- NULL-bitmap, length: (num-params + 7)/8
         packet[j] = strchar(0)
         i = j
     end
-    packet[i+1] = strchar(1)
-    packet[i+2] = type_parm
-    packet[i+3] = value_parm
+    packet[i + 1] = strchar(1)
+    packet[i + 2] = type_parm
+    packet[i + 3] = value_parm
     packet = concat(packet, "")
     -- print("execute pkg: ", _dumphex(packet))
 
@@ -1290,20 +1271,7 @@ function _M.execute(self, statement_id, ...)
         return nil, err
     end
 
-    local result, err = _read_result(self)
-    if err then
-        self.state = STATE_CONNECTED
-        return nil, err
-    end
-
-    local rows, err = _fetch_all_rows(self, result)
-    if err then
-        self.state = STATE_CONNECTED
-        return nil, err
-    end
-
-    self.state = STATE_CONNECTED
-    return rows
+    return _read_result(self, nil, COM_STMT_EXECUTE)
 end
 
 
@@ -1375,7 +1343,8 @@ function _M.run(self, prepare_sql, ...)
 
     -- print("prepare success: ", json.encode(stmt))
 
-    res, err = db:execute(1, ...)
+    -- the statement id shoulds be 1 if there is only one prepare-statement
+    res, err = db:execute(1, ...)   
     if err then
         return nil, err
     end
