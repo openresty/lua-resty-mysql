@@ -830,7 +830,7 @@ function _M.send_query(self, query)
 end
 
 
-local function _read_row_length_code( self, est_nrows, cols )
+local function _read_row_length_code(self, est_nrows, cols)
     local compact = self.compact
     local packet, typ, err
 
@@ -934,7 +934,7 @@ local function _parse_result_data_packet(data, pos, cols, compact)
 end
 
 
-local function _read_row_bin_type( self, est_nrows, cols )
+local function _read_row_bin_type(self, est_nrows, cols)
     local compact = self.compact
     local field_count = #cols
 
@@ -961,7 +961,7 @@ local function _read_row_bin_type( self, est_nrows, cols )
             return nil, "cannot fetch rows with unexpected packet:" .. typ
         end
 
-        local pos = 1 + math.floor((field_count+9)/8) + 1
+        local pos = 1 + math.floor((field_count + 9) / 8) + 1
 
         local row = _parse_result_data_packet(packet, pos, cols, compact)
         i = i + 1
@@ -1256,13 +1256,13 @@ function _M.execute(self, statement_id, ...)
     local bitmap_len =  (#args + 7) / 8 
     local i
     for j = 4, 3 + bitmap_len do
-        -- NULL-bitmap, length: (num-params+7)/8
+        -- NULL-bitmap, length: (num-params + 7)/8
         packet[j] = strchar(0)
         i = j
     end
-    packet[i+1] = strchar(1)
-    packet[i+2] = type_parm
-    packet[i+3] = value_parm
+    packet[i + 1] = strchar(1)
+    packet[i + 2] = type_parm
+    packet[i + 3] = value_parm
     packet = concat(packet, "")
     -- print("execute pkg: ", _dumphex(packet))
 
@@ -1343,7 +1343,8 @@ function _M.run(self, prepare_sql, ...)
 
     -- print("prepare success: ", json.encode(stmt))
 
-    res, err = db:execute(1, ...)
+    -- the statement id shoulds be 1 if there is only one prepare-statement
+    res, err = db:execute(1, ...)   
     if err then
         return nil, err
     end
