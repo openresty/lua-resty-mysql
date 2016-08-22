@@ -156,6 +156,18 @@ local function _get_byte8(data, i)
 end
 
 
+local function _get_byten(data)
+    local a = strbyte(data, 1)
+    local len = #data
+
+    for j = 2, len do
+        a = bor(lshift(a, 8), strbyte(data, j))
+    end
+
+    return a
+end
+
+
 local function _set_byte2(n)
     return strchar(band(n, 0xff), band(rshift(n, 8), 0xff))
 end
@@ -916,11 +928,14 @@ local function _parse_result_data_packet(data, pos, cols, compact)
             local v = ffi.new("point_d", value)
             value = v.d
 
+        elseif typ == mysql_data_type.MYSQL_TYPE_BIT then
+            value, pos = _from_length_coded_str(data, pos)
+            value = _get_byten(value)
         else
             value, pos = _from_length_coded_str(data, pos)
         end
         
-        -- print("row field value: ", value, ", type: ", typ)
+        -- print("row [", name, "] value: ", value, ", type: ", typ)
 
         if compact then
             row[i] = value
@@ -962,6 +977,7 @@ local function _read_row_bin_type(self, est_nrows, cols)
         end
 
         local pos = 1 + math.floor((field_count + 9) / 8) + 1
+        -- print("_parse_result_data_packet: ", _dumphex(packet:sub(pos)))
 
         local row = _parse_result_data_packet(packet, pos, cols, compact)
         i = i + 1
