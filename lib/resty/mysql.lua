@@ -156,7 +156,8 @@ local function _get_byte8(data, i)
 end
 
 
-local function _get_byten(data)
+local function _get_byte_bit(data)
+    -- get bytes which encoded with bit
     local a = strbyte(data, 1)
     local len = #data
 
@@ -891,27 +892,27 @@ local function _parse_datetime( str, typ )
 
     if typ == mysql_data_type.MYSQL_TYPE_DATETIME or
        typ == mysql_data_type.MYSQL_TYPE_TIMESTAMP then
-        year, pos = _get_byte2(str, pos)
+        year, pos  = _get_byte2(str, pos)
         month, pos = _get_byte1(str, pos)
-        day, pos = _get_byte1(str, pos)
-        hour, pos = _get_byte1(str, pos)
-        minute, pos = _get_byte1(str, pos)
-        second = _get_byte1(str, pos)
+        day, pos   = _get_byte1(str, pos)
+        hour, pos  = _get_byte1(str, pos)
+        minute, pos= _get_byte1(str, pos)
+        second     = _get_byte1(str, pos)
 
         return format("%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second)
 
     elseif typ == mysql_data_type.MYSQL_TYPE_DATE then
-        year, pos = _get_byte2(str, pos)
+        year, pos  = _get_byte2(str, pos)
         month, pos = _get_byte1(str, pos)
-        day = _get_byte1(str, pos)
+        day        = _get_byte1(str, pos)
 
         return format("%04d-%02d-%02d", year, month, day)
 
     elseif typ == mysql_data_type.MYSQL_TYPE_TIME then
         pos = 6
-        hour, pos = _get_byte1(str, pos)
+        hour, pos   = _get_byte1(str, pos)
         minute, pos = _get_byte1(str, pos)
-        second = _get_byte1(str, pos)
+        second      = _get_byte1(str, pos)
 
         return format("%02d:%02d:%02d", hour, minute, second)
 
@@ -919,6 +920,8 @@ local function _parse_datetime( str, typ )
         year = _get_byte2(str, pos)
         return year
     end
+
+    return nil, "unknow date time type:" .. typ
 end
 
 
@@ -968,7 +971,7 @@ local function _parse_result_data_packet(data, pos, cols, compact)
 
         elseif typ == mysql_data_type.MYSQL_TYPE_BIT then
             value, pos = _from_length_coded_str(data, pos)
-            value = _get_byten(value)
+            value = _get_byte_bit(value)
 
         elseif typ == mysql_data_type.MYSQL_TYPE_DATETIME or
                typ == mysql_data_type.MYSQL_TYPE_DATE or 
