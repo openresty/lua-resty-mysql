@@ -33,12 +33,12 @@ end
 
 
 ffi.cdef[[
-    typedef union { 
+    typedef union {
         char buf[4];
         float f;
     } point_f;
 
-    typedef union { 
+    typedef union {
         char buf[8];
         double d;
     } point_d;
@@ -881,12 +881,12 @@ local function _read_row_length_code(self, est_nrows, cols)
     end
 
     self.state = STATE_CONNECTED
-    
+
     return rows
 end
 
 
-local function _parse_datetime( str, typ )
+local function _parse_datetime(str, typ)
     local pos  = 1
     local year, month, day, hour, minute, second
 
@@ -899,7 +899,8 @@ local function _parse_datetime( str, typ )
         minute, pos= _get_byte1(str, pos)
         second     = _get_byte1(str, pos)
 
-        return format("%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second)
+        return format("%04d-%02d-%02d %02d:%02d:%02d", year, month, day,
+                        hour, minute, second)
 
     elseif typ == mysql_data_type.MYSQL_TYPE_DATE then
         year, pos  = _get_byte2(str, pos)
@@ -930,7 +931,7 @@ local function _parse_result_data_packet(data, pos, cols, compact)
     local row
     if compact then
         row = new_tab(ncols, 0)
-        
+
     else
         row = new_tab(0, ncols)
     end
@@ -958,14 +959,14 @@ local function _parse_result_data_packet(data, pos, cols, compact)
         elseif typ == mysql_data_type.MYSQL_TYPE_FLOAT then
             value = data:sub(pos, pos + 3)
             pos = pos + 4
-            
+
             local v = ffi.new("point_f", value)
             value = v.f
 
         elseif typ == mysql_data_type.MYSQL_TYPE_DOUBLE then
             value = data:sub(pos, pos + 7)
             pos = pos + 8
-            
+
             local v = ffi.new("point_d", value)
             value = v.d
 
@@ -974,7 +975,7 @@ local function _parse_result_data_packet(data, pos, cols, compact)
             value = _get_byte_bit(value)
 
         elseif typ == mysql_data_type.MYSQL_TYPE_DATETIME or
-               typ == mysql_data_type.MYSQL_TYPE_DATE or 
+               typ == mysql_data_type.MYSQL_TYPE_DATE or
                typ == mysql_data_type.MYSQL_TYPE_TIMESTAMP or
                typ == mysql_data_type.MYSQL_TYPE_TIME then
             value, pos = _from_length_coded_str(data, pos)
@@ -983,12 +984,12 @@ local function _parse_result_data_packet(data, pos, cols, compact)
         else
             value, pos = _from_length_coded_str(data, pos)
         end
-        
+
         -- print("row [", name, "] value: ", value, ", type: ", typ)
 
         if compact then
             row[i] = value
-            
+
         else
             row[name] = value
         end
@@ -1122,6 +1123,7 @@ local function _read_result(self, est_nrows, packet_type)
 
     return rows, err
 end
+
 
 local function read_result(self, est_nrows)
     return _read_result(self, est_nrows, COM_QUERY)
@@ -1312,13 +1314,13 @@ function _M.execute(self, statement_id, ...)
     local args = {...}
     local type_parm  = _encode_param_types(args)
     local value_parm = _encode_param_values(args)
-    
+
     local packet = new_tab(8, 0)
     packet[1] = _set_byte4(statement_id)
     packet[2] = strchar(0)        -- flag
     packet[3] = _set_byte4(1)     -- iteration-count
-    
-    local bitmap_len =  (#args + 7) / 8 
+
+    local bitmap_len = (#args + 7) / 8
     local i
     for j = 4, 3 + bitmap_len do
         -- NULL-bitmap, length: (num-params + 7)/8
@@ -1353,7 +1355,7 @@ local function _shallow_copy(orig)
         for orig_key, orig_value in pairs(orig) do
             copy[orig_key] = orig_value
         end
-        
+
     else -- number, string, boolean, etc
         copy = orig
     end
@@ -1377,7 +1379,7 @@ function _M.run(self, prepare_sql, ...)
     if host then
         local port = opts.port or 3306
         pool = pool .. host .. ":" .. port .. ":" .. prepare_sql
-        
+
     else
         local path = opts.path
         if not path then
@@ -1390,7 +1392,7 @@ function _M.run(self, prepare_sql, ...)
 
     ok, err, errcode, sqlstate = db:connect(opts)
     if not ok then
-        return nil, "failed to connect: " .. err .. ": " .. errcode 
+        return nil, "failed to connect: " .. err .. ": " .. errcode
                         .. " " .. sqlstate
     end
 
@@ -1409,7 +1411,7 @@ function _M.run(self, prepare_sql, ...)
     -- print("prepare success: ", json.encode(stmt))
 
     -- the statement id shoulds be 1 if there is only one prepare-statement
-    res, err = db:execute(1, ...)   
+    res, err = db:execute(1, ...)
     if err then
         return nil, err
     end
