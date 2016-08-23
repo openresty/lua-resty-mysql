@@ -367,7 +367,7 @@ execute success:[{"u_blob":"u_blob","u_char":"c","u_lblob":"u_lblob","u_ltext":"
 
 
 
-=== TEST 3: prepare type: ENUM, SET
+=== TEST 4: prepare type: ENUM, SET
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -469,6 +469,119 @@ table cats created.
 1 rows inserted into table cats (last insert id: 0)
 prepare success:1
 execute success:[{"id":1,"u_enum":"e_2","u_set":"a,c"}]
+--- no_error_log
+[error]
+
+
+
+=== TEST 5: prepare type: datetime
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local mysql = require "resty.mysql"
+            local ljson = require "ljson"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                host = "$TEST_NGINX_MYSQL_HOST",
+                port = $TEST_NGINX_MYSQL_PORT,
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            ngx.say("connected to mysql.")
+
+            local res, err, errno, sqlstate = db:query("drop table if exists cats")
+            if not res then
+                ngx.say("drop table bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("table cats dropped.")
+            
+
+            res, err, errcode, sqlstate =
+                db:query("create table cats "
+                         .. "(id      integer, "
+                         .. "u_dt     DATETIME,"
+                         .. "u_d      DATE,"
+                         .. "u_ts     TIMESTAMP,"
+                         .. "u_t      TIME,"
+                         .. "u_y      YEAR"
+                         .. ")")
+            if not res then
+                ngx.say("create table bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("table cats created.")
+
+            res, err, errcode, sqlstate =
+                db:query("insert into cats "
+                         .. "values (1, "
+                         .. "'2016-08-23 07:09:51', "
+                         .. "'2016-08-23 07:09:51', "
+                         .. "'2016-08-23 07:09:51', "
+                         .. "'2016-08-23 07:09:51', "
+                         .. "'2016')")
+            if not res then
+                ngx.say("insert values bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say(res.affected_rows, " rows inserted into table cats ",
+                    "(last insert id: ", res.insert_id, ")")
+
+            local statement_id, err = db:prepare([[SELECT *
+                                     FROM cats WHERE id = ?]])
+            if err then
+                ngx.say("prepare failed:", err)
+                return
+            end
+
+            ngx.say("prepare success:", statement_id)
+
+            local res, err = db:execute(statement_id, 1)
+            if err then
+                ngx.say("execute failed.", err)
+                return
+            end
+
+            ngx.say("execute success:", ljson.encode(res))
+
+            -- put it into the connection pool of size 100,
+            -- with 10 seconds max idle timeout
+            -- local ok, err = db:set_keepalive(10000, 100)
+            -- if not ok then
+            --     ngx.say("failed to set keepalive: ", err)
+            --     return
+            -- end
+
+            -- or just close the connection right away:
+            local ok, err = db:close()
+            if not ok then
+                ngx.say("failed to close: ", err)
+                return
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+connected to mysql.
+table cats dropped.
+table cats created.
+1 rows inserted into table cats (last insert id: 0)
+prepare success:1
+execute success:[{"id":1,"u_d":"2016-08-23","u_dt":"2016-08-23 07:09:51","u_t":"07:09:51","u_ts":"2016-08-23 07:09:51","u_y":2016}]
 --- no_error_log
 [error]
 
