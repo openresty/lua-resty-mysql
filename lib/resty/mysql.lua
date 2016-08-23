@@ -218,13 +218,13 @@ local function _dump(data)
 end
 
 
-local function _dumphex(data)
+local function _dumphex(data, con_str)
     local len = #data
     local bytes = new_tab(len, 0)
     for i = 1, len do
         bytes[i] = tohex(strbyte(data, i), 2)
     end
-    return concat(bytes, " ")
+    return concat(bytes, con_str or " ")
 end
 
 
@@ -885,6 +885,43 @@ local function _read_row_length_code(self, est_nrows, cols)
 end
 
 
+local function _parse_datetime( str, typ )
+    local pos  = 1
+    local year, month, day, hour, minute, second
+
+    if typ == mysql_data_type.MYSQL_TYPE_DATETIME or
+       typ == mysql_data_type.MYSQL_TYPE_TIMESTAMP then
+        year, pos = _get_byte2(str, pos)
+        month, pos = _get_byte1(str, pos)
+        day, pos = _get_byte1(str, pos)
+        hour, pos = _get_byte1(str, pos)
+        minute, pos = _get_byte1(str, pos)
+        second = _get_byte1(str, pos)
+
+        return format("%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second)
+
+    elseif typ == mysql_data_type.MYSQL_TYPE_DATE then
+        year, pos = _get_byte2(str, pos)
+        month, pos = _get_byte1(str, pos)
+        day = _get_byte1(str, pos)
+
+        return format("%04d-%02d-%02d", year, month, day)
+
+    elseif typ == mysql_data_type.MYSQL_TYPE_TIME then
+        pos = 6
+        hour, pos = _get_byte1(str, pos)
+        minute, pos = _get_byte1(str, pos)
+        second = _get_byte1(str, pos)
+
+        return format("%02d:%02d:%02d", hour, minute, second)
+
+    elseif typ == mysql_data_type.MYSQL_TYPE_YEAR then
+        year = _get_byte2(str, pos)
+        return year
+    end
+end
+
+
 local function _parse_result_data_packet(data, pos, cols, compact)
     local ncols = #cols
     local row
@@ -905,7 +942,8 @@ local function _parse_result_data_packet(data, pos, cols, compact)
         if     typ == mysql_data_type.MYSQL_TYPE_TINY then
             value, pos = _get_byte1(data, pos)
 
-        elseif typ == mysql_data_type.MYSQL_TYPE_SHORT then
+        elseif typ == mysql_data_type.MYSQL_TYPE_SHORT or
+               typ == mysql_data_type.MYSQL_TYPE_YEAR then
             value, pos = _get_byte2(data, pos)
 
         elseif typ == mysql_data_type.MYSQL_TYPE_LONG then
@@ -931,6 +969,14 @@ local function _parse_result_data_packet(data, pos, cols, compact)
         elseif typ == mysql_data_type.MYSQL_TYPE_BIT then
             value, pos = _from_length_coded_str(data, pos)
             value = _get_byten(value)
+
+        elseif typ == mysql_data_type.MYSQL_TYPE_DATETIME or
+               typ == mysql_data_type.MYSQL_TYPE_DATE or 
+               typ == mysql_data_type.MYSQL_TYPE_TIMESTAMP or
+               typ == mysql_data_type.MYSQL_TYPE_TIME then
+            value, pos = _from_length_coded_str(data, pos)
+            value = _parse_datetime(value, typ)
+
         else
             value, pos = _from_length_coded_str(data, pos)
         end
