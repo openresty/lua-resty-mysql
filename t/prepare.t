@@ -62,7 +62,7 @@ __DATA__
             end
 
             ngx.say("table cats dropped.")
-            
+
             local res, err, errcode, sqlstate =
                 db:query("drop table if exists cats")
             if not res then
@@ -170,7 +170,7 @@ execute success:[{"id":1},{"id":2}]
             end
 
             ngx.say("table cats dropped.")
-            
+
 
             res, err, errcode, sqlstate =
                 db:query("create table cats "
@@ -178,7 +178,7 @@ execute success:[{"id":1},{"id":2}]
                          .. "u_bit   BIT(64),"
                          .. "bool    BOOL,"
                          .. "u_small SMALLINT,"     -- 4
-                         .. "u_int   INT,"     
+                         .. "u_int   INT,"
                          .. "u_integer INTEGER,"
                          .. "u_bigint  BIGINT,"
                          .. "u_float   FLOAT,"      -- 8
@@ -196,7 +196,7 @@ execute success:[{"id":1},{"id":2}]
 
             res, err, errcode, sqlstate =
                 db:query("insert into cats "
-                         .. "values (1, 2, true, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)")
+                         .. "values (1, 2, true, 4, 5, 6, 7, 8.125, 9.23231, 10, 11, 12, 13)")
             if not res then
                 ngx.say("insert values bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
                 return
@@ -246,7 +246,7 @@ table cats dropped.
 table cats created.
 1 rows inserted into table cats (last insert id: 0)
 prepare success:1
-execute success:[{"bool":1,"u_bigint":7,"u_bit":2,"u_dec":"12","u_decimal":"11","u_double":9,"u_float":8,"u_int":5,"u_integer":6,"u_num":"13","u_real":10,"u_small":4,"u_tiny":1}]
+execute success:[{"bool":1,"u_bigint":7,"u_bit":2,"u_dec":"12","u_decimal":"11","u_double":9.23231,"u_float":8.125,"u_int":5,"u_integer":6,"u_num":"13","u_real":10,"u_small":4,"u_tiny":1}]
 --- no_error_log
 [error]
 
@@ -285,7 +285,7 @@ execute success:[{"bool":1,"u_bigint":7,"u_bit":2,"u_dec":"12","u_decimal":"11",
             end
 
             ngx.say("table cats dropped.")
-            
+
 
             res, err, errcode, sqlstate =
                 db:query("create table cats "
@@ -293,7 +293,7 @@ execute success:[{"bool":1,"u_bigint":7,"u_bit":2,"u_dec":"12","u_decimal":"11",
                          .. "u_varchar      VARCHAR(12),"
                          .. "u_tinyblob     TINYBLOB,"
                          .. "u_tinytext     TINYTEXT,"     -- 4
-                         .. "u_blob         BLOB,"     
+                         .. "u_blob         BLOB,"
                          .. "u_text         TEXT,"
                          .. "u_mblob        MEDIUMBLOB,"
                          .. "u_mtext        MEDIUMTEXT,"      -- 8
@@ -399,7 +399,7 @@ execute success:[{"u_blob":"u_blob","u_char":"c","u_lblob":"u_lblob","u_ltext":"
             end
 
             ngx.say("table cats dropped.")
-            
+
 
             res, err, errcode, sqlstate =
                 db:query("create table cats "
@@ -506,7 +506,7 @@ execute success:[{"id":1,"u_enum":"e_2","u_set":"a,c"}]
             end
 
             ngx.say("table cats dropped.")
-            
+
 
             res, err, errcode, sqlstate =
                 db:query("create table cats "
