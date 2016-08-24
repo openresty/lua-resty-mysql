@@ -22,6 +22,8 @@ local concat = table.concat
 local setmetatable = setmetatable
 local error = error
 local tonumber = tonumber
+local ffi_new = ffi.new
+local C = ffi.C
 
 
 if not ngx.config
@@ -34,15 +36,19 @@ end
 
 ffi.cdef[[
     typedef union {
-        char buf[4];
-        float f;
-    } point_f;
+        float value;
+    } point_float;
 
     typedef union {
-        char buf[8];
-        double d;
-    } point_d;
+        double value;
+    } point_double;
+
+    void * memcpy(void *restrict dst, const void *restrict src, size_t n);
 ]]
+
+
+local c_st_float  = ffi_new("point_float")
+local c_st_double = ffi_new("point_double")
 
 
 local ok, new_tab = pcall(require, "table.new")
@@ -89,23 +95,23 @@ converters[0xf6] = tonumber  -- newdecimal
 
 -- mysql data type
 local mysql_data_type = {
-    MYSQL_TYPE_DECIMAL  = 0,
-    MYSQL_TYPE_TINY     = 1,
-    MYSQL_TYPE_SHORT    = 2,
-    MYSQL_TYPE_LONG     = 3,
-    MYSQL_TYPE_FLOAT    = 4,
-    MYSQL_TYPE_DOUBLE   = 5,
-    MYSQL_TYPE_NULL     = 6,
-    MYSQL_TYPE_TIMESTAMP= 7,
-    MYSQL_TYPE_LONGLONG = 8,
-    MYSQL_TYPE_INT24    = 9,
-    MYSQL_TYPE_DATE     = 10,
-    MYSQL_TYPE_TIME     = 11,
-    MYSQL_TYPE_DATETIME = 12,
-    MYSQL_TYPE_YEAR     = 13,
-    MYSQL_TYPE_NEWDATE  = 14,
-    MYSQL_TYPE_VARCHAR  = 15,
-    MYSQL_TYPE_BIT      = 16,
+    MYSQL_TYPE_DECIMAL     = 0,
+    MYSQL_TYPE_TINY        = 1,
+    MYSQL_TYPE_SHORT       = 2,
+    MYSQL_TYPE_LONG        = 3,
+    MYSQL_TYPE_FLOAT       = 4,
+    MYSQL_TYPE_DOUBLE      = 5,
+    MYSQL_TYPE_NULL        = 6,
+    MYSQL_TYPE_TIMESTAMP   = 7,
+    MYSQL_TYPE_LONGLONG    = 8,
+    MYSQL_TYPE_INT24       = 9,
+    MYSQL_TYPE_DATE        = 10,
+    MYSQL_TYPE_TIME        = 11,
+    MYSQL_TYPE_DATETIME    = 12,
+    MYSQL_TYPE_YEAR        = 13,
+    MYSQL_TYPE_NEWDATE     = 14,
+    MYSQL_TYPE_VARCHAR     = 15,
+    MYSQL_TYPE_BIT         = 16,
     MYSQL_TYPE_NEWDECIMAL  = 246,
     MYSQL_TYPE_ENUM        = 247,
     MYSQL_TYPE_SET         = 248,
@@ -887,7 +893,7 @@ end
 
 
 local function _parse_datetime(str, typ)
-    local pos  = 1
+    local pos = 1
     local year, month, day, hour, minute, second
 
     if typ == mysql_data_type.MYSQL_TYPE_DATETIME or
@@ -960,15 +966,15 @@ local function _parse_result_data_packet(data, pos, cols, compact)
             value = data:sub(pos, pos + 3)
             pos = pos + 4
 
-            local v = ffi.new("point_f", value)
-            value = v.f
+            C.memcpy(c_st_float, value, 4)
+            value = c_st_float.value
 
         elseif typ == mysql_data_type.MYSQL_TYPE_DOUBLE then
             value = data:sub(pos, pos + 7)
             pos = pos + 8
 
-            local v = ffi.new("point_d", value)
-            value = v.d
+            C.memcpy(c_st_double, value, 8)
+            value = c_st_double.value
 
         elseif typ == mysql_data_type.MYSQL_TYPE_BIT then
             value, pos = _from_length_coded_str(data, pos)
