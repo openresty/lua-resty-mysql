@@ -54,7 +54,7 @@ __DATA__
 
             local res, err, errno, sqlstate
             for j = 1, 10 do
-                res, err, errno, sqlstate = db:query("select * from City order by ID limit 50", 50)
+                res, err, errno, sqlstate = db:query("select * from city order by ID limit 50", 50)
                 if not res then
                     ngx.log(ngx.ERR, "bad result #1: ", err, ": ", errno, ": ", sqlstate, ".")
                     return ngx.exit(500)
