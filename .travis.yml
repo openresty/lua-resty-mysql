@@ -15,6 +15,14 @@ addons:
     - mysql-server-5.6
     - mysql-client-core-5.6
     - mysql-client-5.6
+    - axel 
+    - cpanminus 
+    - libluajit-5.1-dev 
+
+cache:
+  apt: true
+  directories:
+  - download-cache
 
 env:
   global:
@@ -29,9 +37,6 @@ env:
   matrix:
     - NGINX_VERSION=1.9.15
 
-before_install:
-  - sudo apt-get install -qq -y axel cpanminus libluajit-5.1-dev > build.log 2>&1 || (cat build.log && exit 1)
-
 install:
   - git clone https://github.com/openresty/test-nginx.git
   - git clone https://github.com/openresty/openresty.git ../openresty
@@ -42,7 +47,9 @@ install:
 
 before_script:
   - mysql -uroot -e 'create database ngx_test; grant all on ngx_test.* to "ngx_test"@"%" identified by "ngx_test";'
-  - wget http://downloads.mysql.com/docs/world.sql.gz && zcat world.sql.gz | mysql -uroot
+  - if [ ! -d download-cache ]; then mkdir download-cache; fi
+  - if [ ! -f download-cache/world.sql.gz ]; then wget -O download-cache/world.sql.gz http://downloads.mysql.com/docs/world.sql.gz; fi
+  - zcat download-cache/world.sql.gz | mysql -uroot
   - mysql -uroot -e 'grant all on world.* to "ngx_test"@"%"; flush privileges;'
 
 script:
