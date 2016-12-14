@@ -1297,7 +1297,7 @@ GET /t
 
             --according to the MySQL protocol, make packet number be equal to 255
             --packet number = header(1) + field(M) + eof(1) + row(N) + eof(1)
-            --the following sql's packet number is: 1 + 1 + 1 + 251 + 1 = 255
+            --the following sql packet number is: 1 + 1 + 1 + 251 + 1 = 255
             local res, err, errno, sqlstate = db:query("select id from cats limit 251")
 
             if not res then
