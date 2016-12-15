@@ -1256,7 +1256,7 @@ GET /t
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
-        content_by_lua '
+        content_by_lua_block {
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
@@ -1311,7 +1311,7 @@ GET /t
                 return
             end
             ngx.say("success")
-        ';
+        }
     }
 --- request
 GET /t
