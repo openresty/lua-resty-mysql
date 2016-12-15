@@ -1283,19 +1283,6 @@ GET /t
             for i = 1, 260 do
                 db:query("insert into cats(name) values (\'abc\')")
             end
-            db:close()
-
-
-            local ok, err, errno, sqlstate = db:connect({
-                path = "$TEST_NGINX_MYSQL_PATH",
-                database = "ngx_test",
-                user = "ngx_test",
-                password = "ngx_test",
-                pool = "my_pool"})
-            if not ok then
-                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
-                return
-            end
 
             --according to the MySQL protocol, make packet number be equal to 255
             --packet number = header(1) + field(M) + eof(1) + row(N) + eof(1)
