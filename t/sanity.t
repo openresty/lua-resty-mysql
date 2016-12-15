@@ -1301,6 +1301,7 @@ GET /t
             --packet number = header(1) + field(M) + eof(1) + row(N) + eof(1)
             --the following sql packet number is: 1 + 1 + 1 + 251 + 1 = 255
             local res, err, errno, sqlstate = db:query("select id from cats limit 251")
+            db:close()
 
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
