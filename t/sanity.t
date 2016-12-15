@@ -1274,19 +1274,25 @@ GET /t
                 return
             end
 
-            --generate test data
-            local res, err, errno, sqlstate = db:query("create table if not exists cats (id serial primary key, name varchar(5))")
+            -- generate test data
+            local res, err, errno, sqlstate = db:query("drop table if exists cats")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
             end
+            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(5))")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
             for i = 1, 260 do
                 db:query("insert into cats(name) values (\'abc\')")
             end
 
-            --according to the MySQL protocol, make packet number be equal to 255
-            --packet number = header(1) + field(M) + eof(1) + row(N) + eof(1)
-            --the following sql packet number is: 1 + 1 + 1 + 251 + 1 = 255
+            -- according to the MySQL protocol, make packet number be equal to 255
+            -- packet number = header(1) + field(M) + eof(1) + row(N) + eof(1)
+            -- the following sql packet number is: 1 + 1 + 1 + 251 + 1 = 255
             local res, err, errno, sqlstate = db:query("select id from cats limit 251")
             db:close()
 
