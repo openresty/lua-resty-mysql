@@ -1320,3 +1320,4 @@ GET /t
 success
 --- no_error_log
 [error]
+--- timeout: 10
