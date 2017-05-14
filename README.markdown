@@ -92,7 +92,9 @@ Synopsis
                     database = "ngx_test",
                     user = "ngx_test",
                     password = "ngx_test",
-                    max_packet_size = 1024 * 1024 }
+                    charset = "utf8",
+                    max_packet_size = 1024 * 1024,
+                }
 
                 if not ok then
                     ngx.say("failed to connect: ", err, ": ", errcode, " ", sqlstate)
@@ -202,6 +204,14 @@ The `options` argument is a Lua table holding the following keys:
 * `password`
 
     MySQL account password for login (in clear text).
+* `charset`
+
+    the character set used on the MySQL connection, which can be different from the default charset setting.
+The following values are accepted: `big5`, `dec8`, `cp850`, `hp8`, `koi8r`, `latin1`, `latin2`,
+`swe7`, `ascii`, `ujis`, `sjis`, `hebrew`, `tis620`, `euckr`, `koi8u`, `gb2312`, `greek`,
+`cp1250`, `gbk`, `latin5`, `armscii8`, `utf8`, `ucs2`, `cp866`, `keybcs2`, `macce`,
+`macroman`, `cp852`, `latin7`, `utf8mb4`, `cp1251`, `utf16`, `utf16le`, `cp1256`,
+`cp1257`, `utf32`, `binary`, `geostd8`, `cp932`, `eucjpms`, `gb18030`.
 * `max_packet_size`
 
     the upper limit for the reply packets sent from the MySQL server (default to 1MB).

@@ -55,6 +55,54 @@ local SERVER_MORE_RESULTS_EXISTS = 8
 -- 16MB - 1, the default max allowed packet size used by libmysqlclient
 local FULL_PACKET_SIZE = 16777215
 
+-- the following charset map is generated from the following mysql query:
+--   SELECT CHARACTER_SET_NAME, ID
+--   FROM information_schema.collations
+--   WHERE IS_DEFAULT = 'Yes' ORDER BY id;
+local CHARSET_MAP = {
+    _default  = 0,
+    big5      = 1,
+    dec8      = 3,
+    cp850     = 4,
+    hp8       = 6,
+    koi8r     = 7,
+    latin1    = 8,
+    latin2    = 9,
+    swe7      = 10,
+    ascii     = 11,
+    ujis      = 12,
+    sjis      = 13,
+    hebrew    = 16,
+    tis620    = 18,
+    euckr     = 19,
+    koi8u     = 22,
+    gb2312    = 24,
+    greek     = 25,
+    cp1250    = 26,
+    gbk       = 28,
+    latin5    = 30,
+    armscii8  = 32,
+    utf8      = 33,
+    ucs2      = 35,
+    cp866     = 36,
+    keybcs2   = 37,
+    macce     = 38,
+    macroman  = 39,
+    cp852     = 40,
+    latin7    = 41,
+    utf8mb4   = 45,
+    cp1251    = 51,
+    utf16     = 54,
+    utf16le   = 56,
+    cp1256    = 57,
+    cp1257    = 59,
+    utf32     = 60,
+    binary    = 63,
+    geostd8   = 92,
+    cp932     = 95,
+    eucjpms   = 97,
+    gb18030   = 248
+}
 
 local mt = { __index = _M }
 
@@ -505,6 +553,11 @@ function _M.connect(self, opts)
     local database = opts.database or ""
     local user = opts.user or ""
 
+    local charset = CHARSET_MAP[opts.charset or "_default"]
+    if not charset then
+        return nil, "charset '" .. opts.charset .. "' is not supported"
+    end
+
     local pool = opts.pool
 
     local host = opts.host
@@ -624,7 +677,7 @@ function _M.connect(self, opts)
         -- send a SSL Request Packet
         local req = _set_byte4(bor(client_flags, CLIENT_SSL))
                     .. _set_byte4(self._max_packet_size)
-                    .. "\0" -- TODO: add support for charset encoding
+                    .. strchar(charset)
                     .. strrep("\0", 23)
 
         local packet_len = 4 + 4 + 1 + 23
@@ -647,7 +700,7 @@ function _M.connect(self, opts)
 
     local req = _set_byte4(client_flags)
                 .. _set_byte4(self._max_packet_size)
-                .. "\0" -- TODO: add support for charset encoding
+                .. strchar(charset)
                 .. strrep("\0", 23)
                 .. _to_cstring(user)
                 .. _to_binary_coded_string(token)
