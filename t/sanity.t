@@ -1321,3 +1321,68 @@ success
 --- no_error_log
 [error]
 --- timeout: 10
+
+
+
+=== TEST 20: connect db using charset option
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local ljson = require "ljson"
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                path     = "$TEST_NGINX_MYSQL_PATH",
+                database = "ngx_test",
+                user     = "ngx_test",
+                password = "ngx_test",
+                charset  = "utf8",
+                pool     = "my_pool"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            -- generate test data
+            local res, err, errno, sqlstate = db:query("DROP TABLE IF EXISTS cats")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            res, err, errno, sqlstate = db:query("CREATE TABLE cats (id serial PRIMARY KEY, name VARCHAR(128)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+            
+            -- add new record with '愛麗絲' by utf8 encoded.
+            res, err, errno, sqlstate = db:query("INSERT INTO cats(name) VALUES (0xe6849be9ba97e7b5b2)")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+            
+            res, err, errno, sqlstate = db:query("SELECT * FROM cats")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+            
+            db:close()
+
+            ngx.say( ljson.encode(res) )
+        }
+    }
+--- request
+GET /t
+--- response_body
+[{"name":"愛麗絲","id":"1"}]
+--- no_error_log
+[error]
+--- timeout: 10
