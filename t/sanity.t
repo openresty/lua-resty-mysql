@@ -1382,7 +1382,6 @@ success
 --- request
 GET /t
 --- response_body
-[{"name":"愛麗絲","id":"1"}]
+[{"id":"1","name":"愛麗絲"}]
 --- no_error_log
 [error]
---- timeout: 10
