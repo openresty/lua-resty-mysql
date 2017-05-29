@@ -82,4 +82,3 @@ GET /t
 "ncols: 5\n" x 50
 --- no_error_log
 [error]
-

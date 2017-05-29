@@ -208,4 +208,3 @@ failed to connect: failed to do ssl handshake: 18: self signed certificate: nil 
 --- error_log
 lua ssl certificate verify error: (18: self signed certificate)
 --- timeout: 5
-
