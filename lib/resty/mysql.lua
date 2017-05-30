@@ -369,8 +369,8 @@ local function _parse_ok_packet(packet)
 
     --print("warning count: ", res.warning_count, ", pos: ", pos)
 
-    local message = sub(packet, pos)
-    if message and message ~= "" then
+    local message = _from_length_coded_str(packet, pos)
+    if message and message ~= null then
         res.message = message
     end
 
