@@ -108,12 +108,13 @@ local mt = { __index = _M }
 
 
 -- mysql field value type converters
-local converters = new_tab(0, 8)
+local converters = new_tab(0, 9)
 
 for i = 0x01, 0x05 do
     -- tiny, short, long, float, double
     converters[i] = tonumber
 end
+converters[0x00] = tonumber  -- decimal
 -- converters[0x08] = tonumber  -- long long
 converters[0x09] = tonumber  -- int24
 converters[0x0d] = tonumber  -- year
