@@ -93,7 +93,7 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
 === TEST 2: send query w/o result set (verify)
 --- http_config eval: $::HttpConfig
 --- config
-    lua_ssl_trusted_certificate /etc/test.crt;  # assuming used by the MySQL server
+    lua_ssl_trusted_certificate ../../data/test.crt;  # assuming used by the MySQL server
     location /t {
         content_by_lua '
             local mysql = require "resty.mysql"
@@ -208,4 +208,3 @@ failed to connect: failed to do ssl handshake: 18: self signed certificate: nil 
 --- error_log
 lua ssl certificate verify error: (18: self signed certificate)
 --- timeout: 5
-

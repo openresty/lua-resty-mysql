@@ -1,4 +1,4 @@
--- Copyright (C) 2012 Yichun Zhang (agentzh)
+-- Copyright (C) Yichun Zhang (agentzh)
 
 
 local bit = require "bit"
@@ -38,7 +38,7 @@ if not ok then
 end
 
 
-local _M = { _VERSION = '0.15' }
+local _M = { _VERSION = '0.20' }
 
 
 -- constants
@@ -46,6 +46,7 @@ local _M = { _VERSION = '0.15' }
 local STATE_CONNECTED = 1
 local STATE_COMMAND_SENT = 2
 
+local COM_QUIT = 0x01
 local COM_QUERY = 0x03
 local CLIENT_SSL = 0x0800
 
@@ -54,17 +55,66 @@ local SERVER_MORE_RESULTS_EXISTS = 8
 -- 16MB - 1, the default max allowed packet size used by libmysqlclient
 local FULL_PACKET_SIZE = 16777215
 
+-- the following charset map is generated from the following mysql query:
+--   SELECT CHARACTER_SET_NAME, ID
+--   FROM information_schema.collations
+--   WHERE IS_DEFAULT = 'Yes' ORDER BY id;
+local CHARSET_MAP = {
+    _default  = 0,
+    big5      = 1,
+    dec8      = 3,
+    cp850     = 4,
+    hp8       = 6,
+    koi8r     = 7,
+    latin1    = 8,
+    latin2    = 9,
+    swe7      = 10,
+    ascii     = 11,
+    ujis      = 12,
+    sjis      = 13,
+    hebrew    = 16,
+    tis620    = 18,
+    euckr     = 19,
+    koi8u     = 22,
+    gb2312    = 24,
+    greek     = 25,
+    cp1250    = 26,
+    gbk       = 28,
+    latin5    = 30,
+    armscii8  = 32,
+    utf8      = 33,
+    ucs2      = 35,
+    cp866     = 36,
+    keybcs2   = 37,
+    macce     = 38,
+    macroman  = 39,
+    cp852     = 40,
+    latin7    = 41,
+    utf8mb4   = 45,
+    cp1251    = 51,
+    utf16     = 54,
+    utf16le   = 56,
+    cp1256    = 57,
+    cp1257    = 59,
+    utf32     = 60,
+    binary    = 63,
+    geostd8   = 92,
+    cp932     = 95,
+    eucjpms   = 97,
+    gb18030   = 248
+}
 
 local mt = { __index = _M }
 
 
 -- mysql field value type converters
-local converters = new_tab(0, 8)
+local converters = new_tab(0, 9)
 
 for i = 0x01, 0x05 do
     -- tiny, short, long, float, double
     converters[i] = tonumber
 end
+converters[0x00] = tonumber  -- decimal
 -- converters[0x08] = tonumber  -- long long
 converters[0x09] = tonumber  -- int24
 converters[0x0d] = tonumber  -- year
@@ -187,7 +237,7 @@ local function _send_packet(self, req, size)
 
     -- print("packet no: ", self.packet_no)
 
-    local packet = _set_byte3(size) .. strchar(self.packet_no) .. req
+    local packet = _set_byte3(size) .. strchar(band(self.packet_no, 255)) .. req
 
     -- print("sending packet: ", _dump(packet))
 
@@ -285,14 +335,14 @@ local function _from_length_coded_bin(data, pos)
         return _get_byte8(data, pos)
     end
 
-    return false, pos + 1
+    return nil, pos + 1
 end
 
 
 local function _from_length_coded_str(data, pos)
     local len
     len, pos = _from_length_coded_bin(data, pos)
-    if len == nil or len == null then
+    if not len or len == null then
         return null, pos
     end
 
@@ -320,8 +370,8 @@ local function _parse_ok_packet(packet)
 
     --print("warning count: ", res.warning_count, ", pos: ", pos)
 
-    local message = sub(packet, pos)
-    if message and message ~= "" then
+    local message = _from_length_coded_str(packet, pos)
+    if message and message ~= null then
         res.message = message
     end
 
@@ -504,6 +554,11 @@ function _M.connect(self, opts)
     local database = opts.database or ""
     local user = opts.user or ""
 
+    local charset = CHARSET_MAP[opts.charset or "_default"]
+    if not charset then
+        return nil, "charset '" .. opts.charset .. "' is not supported"
+    end
+
     local pool = opts.pool
 
     local host = opts.host
@@ -623,7 +678,7 @@ function _M.connect(self, opts)
         -- send a SSL Request Packet
         local req = _set_byte4(bor(client_flags, CLIENT_SSL))
                     .. _set_byte4(self._max_packet_size)
-                    .. "\0" -- TODO: add support for charset encoding
+                    .. strchar(charset)
                     .. strrep("\0", 23)
 
         local packet_len = 4 + 4 + 1 + 23
@@ -646,7 +701,7 @@ function _M.connect(self, opts)
 
     local req = _set_byte4(client_flags)
                 .. _set_byte4(self._max_packet_size)
-                .. "\0" -- TODO: add support for charset encoding
+                .. strchar(charset)
                 .. strrep("\0", 23)
                 .. _to_cstring(user)
                 .. _to_binary_coded_string(token)
@@ -723,6 +778,11 @@ function _M.close(self)
 
     self.state = nil
 
+    local bytes, err = _send_packet(self, strchar(COM_QUIT), 1)
+    if not bytes then
+        return nil, err
+    end
+
     return sock:close()
 end
 
@@ -764,7 +824,8 @@ _M.send_query = send_query
 
 local function read_result(self, est_nrows)
     if self.state ~= STATE_COMMAND_SENT then
-        return nil, "cannot read result in the current context: " .. self.state
+        return nil, "cannot read result in the current context: "
+                    .. (self.state or "nil")
     end
 
     local sock = self.sock

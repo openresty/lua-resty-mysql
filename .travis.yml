@@ -1,0 +1,67 @@
+sudo: required
+dist: trusty
+
+os: linux
+
+language: c
+
+compiler:
+  - gcc
+  - clang
+
+addons:
+  apt:
+    packages:
+    - mysql-server-5.6
+    - mysql-client-core-5.6
+    - mysql-client-5.6
+    - axel 
+    - cpanminus 
+    - libluajit-5.1-dev 
+
+cache:
+  apt: true
+  directories:
+  - download-cache
+
+env:
+  global:
+    - JOBS=3
+    - NGX_BUILD_JOBS=$JOBS
+    - LUAJIT_LIB=/usr/lib64/libluajit-5.1.so
+    - LUAJIT_INC=/usr/include/luajit-2.0
+    - LUA_INCLUDE_DIR=/usr/include/luajit-2.0
+    - LUA_CMODULE_DIR=/lib
+    - TEST_NGINX_MYSQL_PATH=/var/run/mysqld/mysqld.sock
+    - TEST_NGINX_SLEEP=0.006
+  matrix:
+    - NGINX_VERSION=1.9.15
+
+install:
+  - git clone https://github.com/openresty/test-nginx.git
+  - git clone https://github.com/openresty/openresty.git ../openresty
+  - git clone https://github.com/openresty/nginx-devel-utils.git
+  - git clone https://github.com/openresty/lua-cjson.git
+  - git clone https://github.com/openresty/lua-nginx-module.git ../lua-nginx-module
+  - git clone https://github.com/openresty/no-pool-nginx.git ../no-pool-nginx
+
+before_script:
+  - mysql -uroot -e 'create database ngx_test; grant all on ngx_test.* to "ngx_test"@"%" identified by "ngx_test";'
+  - if [ ! -d download-cache ]; then mkdir download-cache; fi
+  - if [ ! -f download-cache/world.sql.gz ]; then wget -O download-cache/world.sql.gz http://downloads.mysql.com/docs/world.sql.gz; fi
+  - zcat download-cache/world.sql.gz | mysql -uroot
+  - mysql -uroot -e 'grant all on world.* to "ngx_test"@"%"; flush privileges;'
+
+script:
+  - sudo cp t/data/test.crt t/data/test.key /etc/mysql
+  - echo '[mysqld]' > ssl.cnf
+  - echo 'ssl-ca=/etc/mysql/test.crt' >> ssl.cnf
+  - echo 'ssl-cert=/etc/mysql/test.crt' >> ssl.cnf
+  - echo 'ssl-key=/etc/mysql/test.key' >> ssl.cnf
+  - sudo cp ssl.cnf /etc/mysql/conf.d
+  - sudo service mysql restart
+  - cd test-nginx && (sudo cpanm . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
+  - cd lua-cjson && make && sudo PATH=$PATH make install && cd ..
+  - export PATH=$PWD/work/nginx/sbin:$PWD/nginx-devel-utils:$PATH
+  - ngx-build $NGINX_VERSION --with-ipv6 --with-http_realip_module --with-http_ssl_module --add-module=../lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
+  - prove -r t

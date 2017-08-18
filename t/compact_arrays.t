@@ -342,4 +342,3 @@ result: [["Bob","1"],["","2"],[null,"3"]]
 result: [{"id":"3","name":null},{"id":"2","name":""},{"id":"1","name":"Bob"}]
 --- no_error_log
 [error]
-

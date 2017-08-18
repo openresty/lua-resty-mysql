@@ -79,51 +79,53 @@ Synopsis
 
                 -- or connect to a unix domain socket file listened
                 -- by a mysql server:
-                --     local ok, err, errno, sqlstate =
+                --     local ok, err, errcode, sqlstate =
                 --           db:connect{
                 --              path = "/path/to/mysql.sock",
                 --              database = "ngx_test",
                 --              user = "ngx_test",
                 --              password = "ngx_test" }
 
-                local ok, err, errno, sqlstate = db:connect{
+                local ok, err, errcode, sqlstate = db:connect{
                     host = "127.0.0.1",
                     port = 3306,
                     database = "ngx_test",
                     user = "ngx_test",
                     password = "ngx_test",
-                    max_packet_size = 1024 * 1024 }
+                    charset = "utf8",
+                    max_packet_size = 1024 * 1024,
+                }
 
                 if not ok then
-                    ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                    ngx.say("failed to connect: ", err, ": ", errcode, " ", sqlstate)
                     return
                 end
 
                 ngx.say("connected to mysql.")
 
-                local res, err, errno, sqlstate =
+                local res, err, errcode, sqlstate =
                     db:query("drop table if exists cats")
                 if not res then
-                    ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                    ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
                     return
                 end
 
-                res, err, errno, sqlstate =
+                res, err, errcode, sqlstate =
                     db:query("create table cats "
                              .. "(id serial primary key, "
                              .. "name varchar(5))")
                 if not res then
-                    ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                    ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
                     return
                 end
 
                 ngx.say("table cats created.")
 
-                res, err, errno, sqlstate =
+                res, err, errcode, sqlstate =
                     db:query("insert into cats (name) "
                              .. "values (\'Bob\'),(\'\'),(null)")
                 if not res then
-                    ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                    ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
                     return
                 end
 
@@ -132,10 +134,10 @@ Synopsis
 
                 -- run a select query, expected about 10 rows in
                 -- the result set:
-                res, err, errno, sqlstate =
+                res, err, errcode, sqlstate =
                     db:query("select * from cats order by id asc", 10)
                 if not res then
-                    ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                    ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
                     return
                 end
 
@@ -202,6 +204,14 @@ The `options` argument is a Lua table holding the following keys:
 * `password`
 
     MySQL account password for login (in clear text).
+* `charset`
+
+    the character set used on the MySQL connection, which can be different from the default charset setting.
+The following values are accepted: `big5`, `dec8`, `cp850`, `hp8`, `koi8r`, `latin1`, `latin2`,
+`swe7`, `ascii`, `ujis`, `sjis`, `hebrew`, `tis620`, `euckr`, `koi8u`, `gb2312`, `greek`,
+`cp1250`, `gbk`, `latin5`, `armscii8`, `utf8`, `ucs2`, `cp866`, `keybcs2`, `macce`,
+`macroman`, `cp852`, `latin7`, `utf8mb4`, `cp1251`, `utf16`, `utf16le`, `cp1256`,
+`cp1257`, `utf32`, `binary`, `geostd8`, `cp932`, `eucjpms`, `gb18030`.
 * `max_packet_size`
 
     the upper limit for the reply packets sent from the MySQL server (default to 1MB).
@@ -284,9 +294,9 @@ You should use the [read_result](#read_result) method to read the MySQL replies 
 
 read_result
 -----------
-`syntax: res, err, errno, sqlstate = db:read_result()`
+`syntax: res, err, errcode, sqlstate = db:read_result()`
 
-`syntax: res, err, errno, sqlstate = db:read_result(nrows)`
+`syntax: res, err, errcode, sqlstate = db:read_result(nrows)`
 
 Reads in one result returned from the MySQL server.
 
@@ -381,7 +391,7 @@ Below is a trivial example for this:
     local mysql = require "resty.mysql"
 
     local db = mysql:new()
-    local ok, err, errno, sqlstate = db:connect({
+    local ok, err, errcode, sqlstate = db:connect({
         host = "127.0.0.1",
         port = 3306,
         database = "world",
@@ -389,13 +399,13 @@ Below is a trivial example for this:
         password = "pass"})
 
     if not ok then
-        ngx.log(ngx.ERR, "failed to connect: ", err, ": ", errno, " ", sqlstate)
+        ngx.log(ngx.ERR, "failed to connect: ", err, ": ", errcode, " ", sqlstate)
         return ngx.exit(500)
     end
 
-    res, err, errno, sqlstate = db:query("select 1; select 2; select 3;")
+    res, err, errcode, sqlstate = db:query("select 1; select 2; select 3;")
     if not res then
-        ngx.log(ngx.ERR, "bad result #1: ", err, ": ", errno, ": ", sqlstate, ".")
+        ngx.log(ngx.ERR, "bad result #1: ", err, ": ", errcode, ": ", sqlstate, ".")
         return ngx.exit(500)
     end
 
@@ -403,9 +413,9 @@ Below is a trivial example for this:
 
     local i = 2
     while err == "again" do
-        res, err, errno, sqlstate = db:read_result()
+        res, err, errcode, sqlstate = db:read_result()
         if not res then
-            ngx.log(ngx.ERR, "bad result #2: ", err, ": ", errno, ": ", sqlstate, ".")
+            ngx.log(ngx.ERR, "bad result #", i, ": ", err, ": ", errcode, ": ", sqlstate, ".")
             return ngx.exit(500)
         end
 
@@ -546,7 +556,7 @@ TODO
 Author
 ======
 
-Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, CloudFlare Inc.
+Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, OpenResty Inc.
 
 [Back to TOC](#table-of-contents)
 
@@ -555,7 +565,7 @@ Copyright and License
 
 This module is licensed under the BSD license.
 
-Copyright (C) 2012-2013, by Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, CloudFlare Inc.
+Copyright (C) 2012-2017, by Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, OpenResty Inc.
 
 All rights reserved.
 

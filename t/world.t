@@ -47,9 +47,14 @@ __DATA__
                 user = "ngx_test",
                 password = "ngx_test"})
 
+            if not ok then
+                ngx.log(ngx.ERR, "failed to connect: ", err)
+                return ngx.exit(500)
+            end
+
             local res, err, errno, sqlstate
             for j = 1, 10 do
-                res, err, errno, sqlstate = db:query("select * from City order by ID limit 50", 50)
+                res, err, errno, sqlstate = db:query("select * from city order by ID limit 50", 50)
                 if not res then
                     ngx.log(ngx.ERR, "bad result #1: ", err, ": ", errno, ": ", sqlstate, ".")
                     return ngx.exit(500)
@@ -77,4 +82,3 @@ GET /t
 "ncols: 5\n" x 50
 --- no_error_log
 [error]
-

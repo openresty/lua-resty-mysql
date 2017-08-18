@@ -825,7 +825,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}\], err:nil$
+result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":null\}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
@@ -884,7 +884,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql \d\.\S+\.
 sent 30 bytes\.
-result: (?:{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0}|{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]})$
+result: (?:\{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0}|{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]\})$
 --- no_error_log
 [error]
 
@@ -1037,7 +1037,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}\], err:nil$
+result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":null\}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
@@ -1109,7 +1109,7 @@ GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
-result: \[{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}\], err:nil$
+result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":null\}\], err:nil$
 --- no_error_log
 [error]
 --- error_log eval
@@ -1250,3 +1250,74 @@ GET /t
 --- no_error_log
 [error]
 
+
+
+=== TEST 19: fix packet number overflow
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                path = "$TEST_NGINX_MYSQL_PATH",
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test",
+                pool = "my_pool"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            -- generate test data
+            local res, err, errno, sqlstate = db:query("drop table if exists cats")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(5))")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            for i = 1, 260 do
+                res, err, errno, sqlstate = db:query("insert into cats(name) values (\'abc\')")
+                if not res then
+                    ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                    return
+                end
+            end
+
+            -- according to the MySQL protocol, make packet number be equal to 255
+            -- packet number = header(1) + field(M) + eof(1) + row(N) + eof(1)
+            -- the following sql packet number is: 1 + 1 + 1 + 251 + 1 = 255
+            local res, err, errno, sqlstate = db:query("select id from cats limit 251")
+            db:close()
+
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            if #res ~= 251 then
+                ngx.say("bad result, not got 251 rows")
+                return
+            end
+
+            ngx.say("success")
+        }
+    }
+--- request
+GET /t
+--- response_body
+success
+--- no_error_log
+[error]
+--- timeout: 10
