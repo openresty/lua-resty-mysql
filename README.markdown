@@ -47,7 +47,7 @@ Description
 
 This Lua library is a MySQL client driver for the ngx_lua nginx module:
 
-http://wiki.nginx.org/HttpLuaModule
+https://github.com/openresty/lua-nginx-module
 
 This Lua library takes advantage of ngx_lua's cosocket API, which ensures
 100% nonblocking behavior.
@@ -368,7 +368,7 @@ SQL Literal Quoting
 ===================
 
 It is always important to quote SQL literals properly to prevent SQL injection attacks. You can use the
-[ngx.quote_sql_str](http://wiki.nginx.org/HttpLuaModule#ngx.quote_sql_str) function provided by ngx_lua to quote values.
+[ngx.quote_sql_str](https://github.com/openresty/lua-nginx-module#ngxquote_sql_str) function provided by ngx_lua to quote values.
 Here is an example:
 
 ```lua
@@ -457,9 +457,9 @@ It is usually convenient to use the [lua-cjson](http://www.kyne.com.au/~mark/sof
 Automatic Error Logging
 =======================
 
-By default the underlying [ngx_lua](http://wiki.nginx.org/HttpLuaModule) module
+By default the underlying [ngx_lua](https://github.com/openresty/lua-nginx-module) module
 does error logging when socket errors happen. If you are already doing proper error
-handling in your own Lua code, then you are recommended to disable this automatic error logging by turning off [ngx_lua](http://wiki.nginx.org/HttpLuaModule)'s [lua_socket_log_errors](http://wiki.nginx.org/HttpLuaModule#lua_socket_log_errors) directive, that is,
+handling in your own Lua code, then you are recommended to disable this automatic error logging by turning off [ngx_lua](https://github.com/openresty/lua-nginx-module)'s [lua_socket_log_errors](https://github.com/openresty/lua-nginx-module#lua_socket_log_errors) directive, that is,
 
 ```nginx
     lua_socket_log_errors off;
@@ -475,7 +475,7 @@ header_filter_by_lua* where the ngx_lua cosocket API is not available.
 * The `resty.mysql` object instance cannot be stored in a Lua variable at the Lua module level,
 because it will then be shared by all the concurrent requests handled by the same nginx
  worker process (see
-http://wiki.nginx.org/HttpLuaModule#Data_Sharing_within_an_Nginx_Worker ) and
+https://github.com/openresty/lua-nginx-module#data-sharing-within-an-nginx-worker ) and
 result in bad race conditions when concurrent requests are trying to use the same `resty.mysql` instance.
 You should always initiate `resty.mysql` objects in function local
 variables or in the `ngx.ctx` table. These places all have their own data copies for
@@ -538,7 +538,7 @@ Bugs and Patches
 Please submit bug reports, wishlists, or patches by
 
 1. creating a ticket on the [GitHub Issue Tracker](http://github.com/agentzh/lua-resty-mysql/issues),
-1. or posting to the [OpenResty community](http://wiki.nginx.org/HttpLuaModule#Community).
+1. or posting to the [OpenResty community](https://github.com/openresty/lua-nginx-module#community).
 
 [Back to TOC](#table-of-contents)
 
@@ -581,11 +581,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 See Also
 ========
-* the ngx_lua module: http://wiki.nginx.org/HttpLuaModule
+* the ngx_lua module: https://github.com/openresty/lua-nginx-module
 * the MySQL wired protocol specification: http://forge.mysql.com/wiki/MySQL_Internals_ClientServer_Protocol
 * the [lua-resty-memcached](https://github.com/agentzh/lua-resty-memcached) library
 * the [lua-resty-redis](https://github.com/agentzh/lua-resty-redis) library
-* the ngx_drizzle module: http://wiki.nginx.org/HttpDrizzleModule
+* the ngx_drizzle module: https://github.com/openresty/drizzle-nginx-module
 
 [Back to TOC](#table-of-contents)
 
