@@ -121,7 +121,7 @@ GET /t
                 return
             end
 
-            ngx.say("connected to mysql ", db:server_ver())
+            ngx.say("connected to mysql ", db:server_ver(), " thread ", db:thread_id())
 
             db:close()
         ';
@@ -129,7 +129,7 @@ GET /t
 --- request
 GET /t
 --- response_body_like
-connected to mysql \d\.\S+
+connected to mysql \d\.\S+\sthread\s\d+
 --- no_error_log
 [error]
 

@@ -21,6 +21,7 @@ Table of Contents
     * [read_result](#read_result)
     * [query](#query)
     * [server_ver](#server_ver)
+    * [thread_id](#thread_id)
     * [set_compact_arrays](#set_compact_arrays)
 * [SQL Literal Quoting](#sql-literal-quoting)
 * [Multi-Resultset Support](#multi-resultset-support)
@@ -349,6 +350,16 @@ server_ver
 `syntax: str = db:server_ver()`
 
 Returns the MySQL server version string, like `"5.1.64"`.
+
+You should only call this method after successfully connecting to a MySQL server, otherwise `nil` will be returned.
+
+[Back to TOC](#table-of-contents)
+
+thread_id
+----------
+`syntax: tid = db:thread_id()`
+
+Returns the MySQL connection thread id, like `"758"`.
 
 You should only call this method after successfully connecting to a MySQL server, otherwise `nil` will be returned.
 
