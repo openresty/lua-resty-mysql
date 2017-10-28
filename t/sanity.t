@@ -1260,7 +1260,7 @@ GET /t
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(2000) -- 2 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path = "$TEST_NGINX_MYSQL_PATH",
@@ -1320,4 +1320,4 @@ GET /t
 success
 --- no_error_log
 [error]
---- timeout: 10
+--- timeout: 20
