@@ -230,6 +230,29 @@ local function _compute_token(password, scramble)
 end
 
 
+local function _compute_size(a)
+    -- compute total size of a string or a (nested) Lua table holding string fragments
+    if type(a) == "string" then
+        return #a
+    end
+    local n = 0
+    for i, v in pairs(a) do
+        n = n + _compute_size(v)
+    end
+    return n
+end
+
+
+local function _concat_rec(t, sep)
+    for i, v in ipairs(t) do
+        if type(v) == "table" then
+            t[i] = _concat_rec(v, sep)
+        end
+    end
+    return concat(t, sep)
+end
+
+
 local function _send_packet(self, req, size)
     local sock = self.sock
 
@@ -237,11 +260,11 @@ local function _send_packet(self, req, size)
 
     -- print("packet no: ", self.packet_no)
 
-    local packet = _set_byte3(size) .. strchar(band(self.packet_no, 255)) .. req
+    local packet = {_set_byte3(size), strchar(band(self.packet_no, 255)), req}
 
-    -- print("sending packet: ", _dump(packet))
+    -- print("sending packet: ", _dump(_concat_rec(packet)))
 
-    -- print("sending packet... of size " .. #packet)
+    -- print("sending packet... of size " .. _compute_size(packet))
 
     return sock:send(packet)
 end
@@ -805,10 +828,9 @@ local function send_query(self, query)
 
     self.packet_no = -1
 
-    local cmd_packet = strchar(COM_QUERY) .. query
-    local packet_len = 1 + #query
+    local packet_len = 1 + _compute_size(query)
 
-    local bytes, err = _send_packet(self, cmd_packet, packet_len)
+    local bytes, err = _send_packet(self, {strchar(COM_QUERY), query}, packet_len)
     if not bytes then
         return nil, err
     end
