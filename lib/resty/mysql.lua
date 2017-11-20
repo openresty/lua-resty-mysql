@@ -178,7 +178,7 @@ local function _from_cstring(data, i)
         return nil, nil
     end
 
-    return sub(data, i, last), last + 1
+    return sub(data, i, last - 1), last + 1
 end
 
 
