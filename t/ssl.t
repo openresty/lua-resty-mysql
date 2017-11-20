@@ -81,7 +81,7 @@ __DATA__
 --- request
 GET /t
 --- response_body_like chop
-^connected to mysql \d\.\S+\.
+^connected to mysql \d\.[^\s\x00]+\.
 sent 30 bytes\.
 result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]\}$
 --- no_error_log
@@ -143,7 +143,7 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
 --- request
 GET /t
 --- response_body_like chop
-^connected to mysql \d\.\S+\.
+^connected to mysql \d\.[^\s\x00]+\.
 sent 30 bytes\.
 result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]\}$
 --- no_error_log
