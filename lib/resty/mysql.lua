@@ -120,6 +120,11 @@ converters[0x09] = tonumber  -- int24
 converters[0x0d] = tonumber  -- year
 converters[0xf6] = tonumber  -- newdecimal
 
+-- avoid extra allocation of temp tables by sharing preallocated tables
+local packet = new_tab(3, 0)
+local query_packet = new_tab(2, 0)
+query_packet[1] = strchar(COM_QUERY)
+
 
 local function _get_byte2(data, i)
     local a, b = strbyte(data, i, i + 1)
@@ -230,6 +235,29 @@ local function _compute_token(password, scramble)
 end
 
 
+local function _compute_size(a)
+    -- compute total size of a string or a (nested) Lua table holding string fragments
+    if type(a) == "string" then
+        return #a
+    end
+    local n = 0
+    for i, v in ipairs(a) do
+        n = n + _compute_size(v)
+    end
+    return n
+end
+
+
+local function _concat_rec(t, sep)
+    for i, v in ipairs(t) do
+        if type(v) == "table" then
+            t[i] = _concat_rec(v, sep)
+        end
+    end
+    return concat(t, sep)
+end
+
+
 local function _send_packet(self, req, size)
     local sock = self.sock
 
@@ -237,11 +265,13 @@ local function _send_packet(self, req, size)
 
     -- print("packet no: ", self.packet_no)
 
-    local packet = _set_byte3(size) .. strchar(band(self.packet_no, 255)) .. req
+    packet[1] = _set_byte3(size)
+    packet[2] = strchar(band(self.packet_no, 255))
+    packet[3] = req
 
-    -- print("sending packet: ", _dump(packet))
+    -- print("sending packet: ", _dump(_concat_rec(packet)))
 
-    -- print("sending packet... of size " .. #packet)
+    -- print("sending packet... of size " .. _compute_size(packet))
 
     return sock:send(packet)
 end
@@ -805,10 +835,9 @@ local function send_query(self, query)
 
     self.packet_no = -1
 
-    local cmd_packet = strchar(COM_QUERY) .. query
-    local packet_len = 1 + #query
-
-    local bytes, err = _send_packet(self, cmd_packet, packet_len)
+    local packet_len = 1 + _compute_size(query)
+    query_packet[2] = query
+    local bytes, err = _send_packet(self, query_packet, packet_len)
     if not bytes then
         return nil, err
     end

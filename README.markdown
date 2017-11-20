@@ -286,6 +286,8 @@ send_query
 
 Sends the query to the remote MySQL server without waiting for its replies.
 
+The argument query can be a string or a (nested) Lua table holding string fragments.
+
 Returns the bytes successfully sent out in success and otherwise returns `nil` and a string describing the error.
 
 You should use the [read_result](#read_result) method to read the MySQL replies afterwards.

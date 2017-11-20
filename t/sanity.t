@@ -1321,3 +1321,81 @@ success
 --- no_error_log
 [error]
 --- timeout: 20
+
+
+
+=== TEST 20: query with a table
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            local ljson = require "ljson"
+
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(2000) -- 2 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                host = "$TEST_NGINX_MYSQL_HOST",
+                port = $TEST_NGINX_MYSQL_PORT,
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            ngx.say("connected to mysql.")
+
+            local res, err, errno, sqlstate = db:query("drop table if exists cats")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("table cats dropped.")
+
+            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(5))")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("table cats created.")
+
+            res, err, errno, sqlstate = db:query({"insert into ", "cats (name) value ", {"(\'Bob\'),", "(\'\'),", "(null)"}})
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say(res.affected_rows, " rows inserted into table cats (last id: ", res.insert_id, ")")
+
+            res, err, errno, sqlstate = db:query({"select * from ", "cats", " order by id asc"})
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say("result: ", ljson.encode(res))
+
+            local ok, err = db:close()
+            if not ok then
+                ngx.say("failed to close: ", err)
+                return
+            end
+        ';
+    }
+--- request
+GET /t
+--- response_body
+connected to mysql.
+table cats dropped.
+table cats created.
+3 rows inserted into table cats (last id: 1)
+result: [{"id":"1","name":"Bob"},{"id":"2","name":""},{"id":"3","name":null}]
+--- no_error_log
+[error]
