@@ -1321,3 +1321,82 @@ success
 --- no_error_log
 [error]
 --- timeout: 20
+
+
+=== TEST 20: 251 columns
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local mysql = require "resty.mysql"
+            local sql = require "sql"
+
+            local db = mysql:new()
+
+            db:set_timeout(2000) -- 2 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                path = "$TEST_NGINX_MYSQL_PATH",
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            local columns = 251
+
+            -- generate test data
+            local res, err, errno, sqlstate = db:query(sql.drop(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            res, err, errno, sqlstate = db:query(sql.create(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            res, err, errno, sqlstate = db:query(sql.insert(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            local res, err, errno, sqlstate = db:query(sql.query(columns))
+            db:close()
+
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            if #res ~= 1 then
+                ngx.say("bad result, not got 1 rows")
+                return
+            end
+
+            local row = res[1]
+            local count = 0
+            for _ in pairs(row) do
+                count = count + 1
+            end
+            if count ~= columns then
+                ngx.say("bad result, got ", count, " columns")
+                return
+            end
+
+            ngx.say("success")
+        }
+    }
+--- request
+GET /t
+--- response_body
+success
+--- no_error_log
+[error]
+--- timeout: 20
