@@ -1476,8 +1476,8 @@ success
     }
 --- request
 GET /t
---- response_body
-bad result: Too many columns: 1117: HY000.
+--- response_body_like
+bad result: .*Too many columns.*.
 
 --- no_error_log
 [error]
@@ -1557,8 +1557,8 @@ bad result: Too many columns: 1117: HY000.
     }
 --- request
 GET /t
---- response_body
-bad result: Too many columns: 1117: HY000.
+--- response_body_like
+bad result: .*Too many columns.*.
 
 --- no_error_log
 [error]
