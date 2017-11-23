@@ -1323,13 +1323,14 @@ success
 --- timeout: 20
 
 
+
 === TEST 20: 251 columns
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
             local mysql = require "resty.mysql"
-            local sql = require "sql"
+            local sql = require "create_sql_by_columns"
 
             local db = mysql:new()
 
@@ -1356,6 +1357,248 @@ success
             end
 
             res, err, errno, sqlstate = db:query(sql.create(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            res, err, errno, sqlstate = db:query(sql.insert(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            local res, err, errno, sqlstate = db:query(sql.query(columns))
+            db:close()
+
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            if #res ~= 1 then
+                ngx.say("bad result, not got 1 rows")
+                return
+            end
+
+            local row = res[1]
+            local count = 0
+            for _ in pairs(row) do
+                count = count + 1
+            end
+            if count ~= columns then
+                ngx.say("bad result, got ", count, " columns")
+                return
+            end
+
+            ngx.say("success")
+        }
+    }
+--- request
+GET /t
+--- response_body
+success
+--- no_error_log
+[error]
+--- timeout: 20
+
+
+
+=== TEST 21: MySQL has hard limit of 4096 columns per table
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local mysql = require "resty.mysql"
+            local sql = require "create_sql_by_columns"
+
+            local db = mysql:new()
+
+            db:set_timeout(2000) -- 2 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                path = "$TEST_NGINX_MYSQL_PATH",
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            local columns = 4097
+
+            -- generate test data
+            local res, err, errno, sqlstate = db:query(sql.drop(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            res, err, errno, sqlstate = db:query(sql.create(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            res, err, errno, sqlstate = db:query(sql.insert(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            local res, err, errno, sqlstate = db:query(sql.query(columns))
+            db:close()
+
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            if #res ~= 1 then
+                ngx.say("bad result, not got 1 rows")
+                return
+            end
+
+            local row = res[1]
+            local count = 0
+            for _ in pairs(row) do
+                count = count + 1
+            end
+            if count ~= columns then
+                ngx.say("bad result, got ", count, " columns")
+                return
+            end
+
+            ngx.say("success")
+        }
+    }
+--- request
+GET /t
+--- response_body
+bad result: Too many columns: 1117: HY000.
+
+--- no_error_log
+[error]
+--- timeout: 20
+
+
+
+=== TEST 22: InnoDB has a limit of 1017 columns per table
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local mysql = require "resty.mysql"
+            local sql = require "create_sql_by_columns"
+
+            local db = mysql:new()
+
+            db:set_timeout(2000) -- 2 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                path = "$TEST_NGINX_MYSQL_PATH",
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            local columns = 1018
+
+            -- generate test data
+            local res, err, errno, sqlstate = db:query(sql.drop(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            res, err, errno, sqlstate = db:query(sql.create(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            res, err, errno, sqlstate = db:query(sql.insert(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            local res, err, errno, sqlstate = db:query(sql.query(columns))
+            db:close()
+
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            if #res ~= 1 then
+                ngx.say("bad result, not got 1 rows")
+                return
+            end
+
+            local row = res[1]
+            local count = 0
+            for _ in pairs(row) do
+                count = count + 1
+            end
+            if count ~= columns then
+                ngx.say("bad result, got ", count, " columns")
+                return
+            end
+
+            ngx.say("success")
+        }
+    }
+--- request
+GET /t
+--- response_body
+bad result: Too many columns: 1117: HY000.
+
+--- no_error_log
+[error]
+--- timeout: 20
+
+
+
+=== TEST 23: MyISAM columns per table > 1017
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local mysql = require "resty.mysql"
+            local sql = require "create_sql_by_columns"
+
+            local db = mysql:new()
+
+            db:set_timeout(2000) -- 2 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                path = "$TEST_NGINX_MYSQL_PATH",
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test"})
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            local columns = 1018
+
+            -- generate test data
+            local res, err, errno, sqlstate = db:query(sql.drop(columns))
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            res, err, errno, sqlstate = db:query(sql.create(columns, "MyISAM"))
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return

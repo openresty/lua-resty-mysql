@@ -11,13 +11,17 @@ end
 
 local _M = {}
 
-function _M.create(num)
+function _M.create(num, engine)
     local bits = new_tab(num + 1, 0)
     bits[1] = "CREATE TABLE test" .. num .. " (id int(10) AUTO_INCREMENT, "
     for i = 2, num do
         bits[i] = "t" .. i - 1 .. " int(1) DEFAULT 0, "
     end
-    bits[num + 1] = "PRIMARY KEY (id))"
+
+    if not engine then
+        engine = "InnoDB"
+    end
+    bits[num + 1] = "PRIMARY KEY (id)) ENGINE=" .. engine
 
     return concat(bits, "")
 end
