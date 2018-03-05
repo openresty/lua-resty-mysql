@@ -180,7 +180,7 @@ Creates a MySQL connection object. In case of failures, returns `nil` and a stri
 
 connect
 -------
-`syntax: ok, err = db:connect(options)`
+`syntax: ok, err, errcode, sqlstate = db:connect(options)`
 
 Attempts to connect to the remote MySQL server.
 
