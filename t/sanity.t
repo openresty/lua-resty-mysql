@@ -1557,8 +1557,8 @@ bad result: .*Too many columns.*.
     }
 --- request
 GET /t
---- response_body_like
-bad result: .*Too many columns.*|Can't create table 'ngx_test\.test1018' \(errno: 139\)
+--- response_body_like chomp
+bad result: .*?(?:Too many columns|Can't create table 'ngx_test\.test1018' \(errno: 139\))
 
 --- no_error_log
 [error]
