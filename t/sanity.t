@@ -831,6 +831,7 @@ result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":nul
 --- error_log eval
 qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^\s:]+:\d+"/
 --- log_level: debug
+--- wait: 0.1
 
 
 
@@ -1043,6 +1044,7 @@ result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":nul
 --- error_log eval
 qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^\s:]+"/
 --- log_level: debug
+--- wait: 0.1
 
 
 
@@ -1115,6 +1117,7 @@ result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":nul
 --- error_log eval
 qr/lua tcp socket keepalive create connection pool for key "my_pool"/
 --- log_level: debug
+--- wait: 0.1
 
 
 
@@ -1187,6 +1190,7 @@ result: \[\{"sum\(id\)":6\}\], err:nil$
 --- error_log eval
 qr/lua tcp socket keepalive create connection pool for key "my_pool"/
 --- log_level: debug
+--- wait: 0.1
 
 
 
