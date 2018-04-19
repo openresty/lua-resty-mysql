@@ -54,7 +54,7 @@ This Lua library takes advantage of ngx_lua's cosocket API, which ensures
 
 Note that at least [ngx_lua 0.9.11](https://github.com/chaoslawful/lua-nginx-module/tags) or [ngx_openresty 1.7.4.1](http://openresty.org/#Download) is required.
 
-Also, the [bit library](http://bitop.luajit.org/) is also required. If you're using LuaJIT 2.0 with ngx_lua, then the `bit` library is already available by default.
+Also, the [bit library](http://bitop.luajit.org/) is also required. If you're using LuaJIT 2 with ngx_lua, then the `bit` library is already available by default.
 
 Synopsis
 ========
@@ -565,7 +565,7 @@ Copyright and License
 
 This module is licensed under the BSD license.
 
-Copyright (C) 2012-2017, by Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, OpenResty Inc.
+Copyright (C) 2012-2018, by Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, OpenResty Inc.
 
 All rights reserved.
 
