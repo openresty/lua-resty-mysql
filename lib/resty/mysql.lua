@@ -233,8 +233,7 @@ end
 local function _send_packet(self, req, size)
     local sock = self.sock
 
-    -- self.packet_no = self.packet_no + 1
-    self.packet_no = (self.packet_no < 255 and self.packet_no + 1) or 1
+    self.packet_no = (self.packet_no and self.packet_no < 255 and self.packet_no + 1) or 1
 
     -- print("packet no: ", self.packet_no)
 
