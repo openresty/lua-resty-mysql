@@ -24,11 +24,13 @@ local error = error
 local tonumber = tonumber
 
 
-if not ngx.config
-   or not ngx.config.ngx_lua_version
-   or ngx.config.ngx_lua_version < 9011
-then
-    error("ngx_lua 0.9.11+ required")
+if ngx.config.subsystem == "http" then
+	if not ngx.config
+	   or not ngx.config.ngx_lua_version
+	   or ngx.config.ngx_lua_version < 9011
+	then
+	    error("ngx_lua 0.9.11+ required")
+	end
 end
 
 
