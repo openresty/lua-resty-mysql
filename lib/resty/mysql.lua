@@ -23,14 +23,15 @@ local setmetatable = setmetatable
 local error = error
 local tonumber = tonumber
 
+local subsystem = ngx.config.subsystem
 
-if ngx.config.subsystem == "http" then
-	if not ngx.config
-	   or not ngx.config.ngx_lua_version
-	   or ngx.config.ngx_lua_version < 9011
-	then
-	    error("ngx_lua 0.9.11+ required")
-	end
+if subsystem == nil or subsystem == "http" then
+    if not ngx.config
+       or not ngx.config.ngx_lua_version
+       or ngx.config.ngx_lua_version < 9011
+    then
+        error("ngx_lua 0.9.11+ required")
+    end
 end
 
 
