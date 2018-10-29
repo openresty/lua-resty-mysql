@@ -804,7 +804,7 @@ ok, err, errno, sqlstate = db:connect({
 
             ngx.say("connected to mysql: ", db:get_reused_times())
 
-            res, err, errno, sqlstate =
+            local res, err, errno, sqlstate =
                 db:query("select * from cats order by id asc;")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
@@ -917,7 +917,8 @@ result: (?:\{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0
 
             ngx.say("connected to mysql.")
 
-            local res, err, errno, sqlstate = db:query("drop table if exists cats")
+            local res
+            res, err, errno, sqlstate = db:query("drop table if exists cats")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
@@ -1017,6 +1018,7 @@ result: [{"name":null},{"name":""},{"name":"Bob"}]
 
             ngx.say("connected to mysql: ", db:get_reused_times())
 
+            local res
             res, err, errno, sqlstate =
                 db:query("select * from cats order by id asc;")
             if not res then
@@ -1090,6 +1092,7 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
 
             ngx.say("connected to mysql: ", db:get_reused_times())
 
+            local res
             res, err, errno, sqlstate =
                 db:query("select * from cats order by id asc;")
             if not res then
@@ -1147,7 +1150,7 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
 
             ngx.say("connected to mysql: ", db:get_reused_times())
 
-            local ok, err = db:set_keepalive()
+            ok, err = db:set_keepalive()
             if not ok then
                 ngx.say("failed to set keepalive: ", err)
                 return
@@ -1163,6 +1166,7 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
 
             ngx.say("connected to mysql: ", db:get_reused_times())
 
+            local res
             res, err, errno, sqlstate =
                 db:query("select sum(id) from cats")
             if not res then
