@@ -302,7 +302,7 @@ Reads in one result returned from the MySQL server.
 
 It returns a Lua table (`res`) describing the MySQL `OK packet` or `result set packet` for the query result.
 
-For queries corresponding to a result set, it returns an array holding all the rows. Each row holds key-value apirs for each data fields. For instance,
+For queries corresponding to a result set, it returns an array holding all the rows. Each row holds key-value pairs for each data fields. For instance,
 
 ```lua
     {
