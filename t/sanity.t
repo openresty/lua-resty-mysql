@@ -57,8 +57,8 @@ __DATA__
     }
 --- request
 GET /t
---- response_body
-failed to connect: Access denied for user 'user_not_found'@'localhost' (using password: YES): 1045 28000
+--- response_body_like
+failed to connect: Access denied for user 'user_not_found'@'[^\s]+' \(using password: YES\): 1045 28000
 --- no_error_log
 [error]
 
@@ -831,7 +831,7 @@ result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":nul
 --- error_log eval
 qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^\s:]+:\d+"/
 --- log_level: debug
---- wait: 0.1
+--- wait: 0.3
 
 
 
@@ -1046,7 +1046,7 @@ result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":nul
 --- error_log eval
 qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^\s:]+"/
 --- log_level: debug
---- wait: 0.1
+--- wait: 0.3
 
 
 
@@ -1120,7 +1120,7 @@ result: \[\{"id":"1","name":"Bob"\},\{"id":"2","name":""\},\{"id":"3","name":nul
 --- error_log eval
 qr/lua tcp socket keepalive create connection pool for key "my_pool"/
 --- log_level: debug
---- wait: 0.1
+--- wait: 0.3
 
 
 
@@ -1194,7 +1194,7 @@ result: \[\{"sum\(id\)":6\}\], err:nil$
 --- error_log eval
 qr/lua tcp socket keepalive create connection pool for key "my_pool"/
 --- log_level: debug
---- wait: 0.1
+--- wait: 0.3
 
 
 
