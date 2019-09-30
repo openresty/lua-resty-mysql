@@ -15,9 +15,8 @@ addons:
     - mysql-server-5.6
     - mysql-client-core-5.6
     - mysql-client-5.6
-    - axel 
-    - cpanminus 
-    - libluajit-5.1-dev 
+    - axel
+    - cpanminus
 
 cache:
   apt: true
@@ -28,10 +27,10 @@ env:
   global:
     - JOBS=3
     - NGX_BUILD_JOBS=$JOBS
-    - LUAJIT_LIB=/usr/lib64/libluajit-5.1.so
-    - LUAJIT_INC=/usr/include/luajit-2.0
-    - LUA_INCLUDE_DIR=/usr/include/luajit-2.0
-    - LUA_CMODULE_DIR=/lib
+    - LUAJIT_PREFIX=/opt/luajit21
+    - LUAJIT_LIB=$LUAJIT_PREFIX/lib
+    - LUAJIT_INC=$LUAJIT_PREFIX/include/luajit-2.1
+    - LD_LIBRARY_PATH=$LUAJIT_LIB:$LD_LIBRARY_PATH
     - TEST_NGINX_MYSQL_PATH=/var/run/mysqld/mysqld.sock
     - TEST_NGINX_SLEEP=0.006
   matrix:
@@ -46,6 +45,7 @@ install:
   - git clone https://github.com/openresty/lua-resty-core.git ../lua-resty-core
   - git clone https://github.com/openresty/lua-resty-lrucache.git ../lua-resty-lrucache
   - git clone https://github.com/openresty/no-pool-nginx.git ../no-pool-nginx
+  - git clone -b v2.1-agentzh https://github.com/openresty/luajit2.git luajit2
 
 before_script:
   - mysql -uroot -e 'create database ngx_test; grant all on ngx_test.* to "ngx_test"@"%" identified by "ngx_test";'
@@ -53,6 +53,10 @@ before_script:
   - if [ ! -f download-cache/world.sql.gz ]; then wget -O download-cache/world.sql.gz http://downloads.mysql.com/docs/world.sql.gz; fi
   - zcat download-cache/world.sql.gz | mysql -uroot
   - mysql -uroot -e 'grant all on world.* to "ngx_test"@"%"; flush privileges;'
+  - cd luajit2/
+  - make -j$JOBS CCDEBUG=-g Q= PREFIX=$LUAJIT_PREFIX CC=$CC XCFLAGS='-DLUA_USE_APICHECK -DLUA_USE_ASSERT -msse4.2' > build.log 2>&1 || (cat build.log && exit 1)
+  - sudo make install PREFIX=$LUAJIT_PREFIX > build.log 2>&1 || (cat build.log && exit 1)
+  - cd ..
 
 script:
   - sudo cp t/data/test.crt t/data/test.key /etc/mysql
@@ -63,7 +67,7 @@ script:
   - sudo cp ssl.cnf /etc/mysql/conf.d
   - sudo service mysql restart
   - cd test-nginx && (sudo cpanm . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
-  - cd lua-cjson && make && sudo PATH=$PATH make install && cd ..
+  - cd lua-cjson && (LUA_INCLUDE_DIR=$LUAJIT_INC make && sudo PATH=$PATH make install) || (cat build.log && exit 1) && cd ..
   - export PATH=$PWD/work/nginx/sbin:$PWD/nginx-devel-utils:$PATH
   - ngx-build $NGINX_VERSION --with-ipv6 --with-http_realip_module --with-http_ssl_module --add-module=../lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
   - prove -r t
