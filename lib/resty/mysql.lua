@@ -568,7 +568,8 @@ function _M.connect(self, opts)
             pool = user .. ":" .. database .. ":" .. host .. ":" .. port
         end
 
-        ok, err = sock:connect(host, port, { pool = pool })
+        ok, err = sock:connect(host, port, { pool = pool, pool_size = opts.pool_size,
+                               backlog = opts.backlog})
 
     else
         local path = opts.path
@@ -580,7 +581,8 @@ function _M.connect(self, opts)
             pool = user .. ":" .. database .. ":" .. path
         end
 
-        ok, err = sock:connect("unix:" .. path, { pool = pool })
+        ok, err = sock:connect("unix:" .. path, { pool = pool, pool_size = opts.pool_size,
+                               backlog = opts.backlog})
     end
 
     if not ok then
