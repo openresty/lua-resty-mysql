@@ -34,7 +34,7 @@ env:
     - TEST_NGINX_MYSQL_PATH=/var/run/mysqld/mysqld.sock
     - TEST_NGINX_SLEEP=0.006
   matrix:
-    - NGINX_VERSION=1.17.4
+    - NGINX_VERSION=1.17.8
 
 install:
   - git clone https://github.com/openresty/test-nginx.git
