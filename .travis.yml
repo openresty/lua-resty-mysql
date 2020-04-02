@@ -1,4 +1,3 @@
-sudo: required
 dist: trusty
 
 os: linux
@@ -33,7 +32,7 @@ env:
     - LD_LIBRARY_PATH=$LUAJIT_LIB:$LD_LIBRARY_PATH
     - TEST_NGINX_MYSQL_PATH=/var/run/mysqld/mysqld.sock
     - TEST_NGINX_SLEEP=0.006
-  matrix:
+  jobs:
     - NGINX_VERSION=1.17.8
 
 install:
@@ -42,6 +41,7 @@ install:
   - git clone https://github.com/openresty/nginx-devel-utils.git
   - git clone https://github.com/openresty/lua-cjson.git
   - git clone https://github.com/openresty/lua-nginx-module.git ../lua-nginx-module
+  - git clone https://github.com/openresty/stream-lua-nginx-module.git ../stream-lua-nginx-module
   - git clone https://github.com/openresty/lua-resty-core.git ../lua-resty-core
   - git clone https://github.com/openresty/lua-resty-lrucache.git ../lua-resty-lrucache
   - git clone https://github.com/openresty/no-pool-nginx.git ../no-pool-nginx
@@ -69,5 +69,5 @@ script:
   - cd test-nginx && (sudo cpanm . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
   - cd lua-cjson && (LUA_INCLUDE_DIR=$LUAJIT_INC make && sudo PATH=$PATH make install) || (cat build.log && exit 1) && cd ..
   - export PATH=$PWD/work/nginx/sbin:$PWD/nginx-devel-utils:$PATH
-  - ngx-build $NGINX_VERSION --with-ipv6 --with-http_realip_module --with-http_ssl_module --add-module=../lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
+  - ngx-build $NGINX_VERSION --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-stream --with-stream_ssl_module --with-stream_ssl_preread_module --add-module=../lua-nginx-module --add-module=../stream-lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
   - prove -r t
