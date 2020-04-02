@@ -33,7 +33,7 @@ __DATA__
 === TEST 1: connected (support in stream module)
 --- stream_config eval: $::StreamConfig
 --- stream_server_config
-    content_by_lua '
+    content_by_lua_block {
         local mysql = require "resty.mysql"
         local db = mysql:new()
 
@@ -54,7 +54,7 @@ __DATA__
         ngx.say("connected to mysql ", db:server_ver())
 
         db:close()
-    ';
+    }
 --- response_body_like
 connected to mysql \d\.[^\s\x00]+
 --- no_error_log
