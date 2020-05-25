@@ -9,3 +9,4 @@ tags
 src/
 mysqld.cnf
 download-cache/
+t/data/test.*

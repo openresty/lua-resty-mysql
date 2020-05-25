@@ -2,12 +2,37 @@
 
 set -ex
 
+if [ $DB_VERSION == 'mysql:8.0' -o $DB_VERSION == 'mariadb:10.3' ]; then
+    sudo cp t/data/test-sha256.crt t/data/test.crt
+    sudo cp t/data/test-sha256.key t/data/test.key
+else
+    sudo cp t/data/test-sha1.crt t/data/test.crt
+    sudo cp t/data/test-sha1.key t/data/test.key
+    sudo cp t/data/test-sha1.pub t/data/test.pub
+fi
+
 cat << EOF >mysqld.cnf
 [mysqld]
 ssl-ca=/etc/mysql/ssl/test.crt
 ssl-cert=/etc/mysql/ssl/test.crt
 ssl-key=/etc/mysql/ssl/test.key
 socket=/var/run/mysqld/mysqld.sock
+EOF
+
+if [ $DB_VERSION != 'mysql:8.0' -a $DB_VERSION != 'mysql:5.7' ]; then
+cat << EOF >>mysqld.cnf
+secure-auth=0
+EOF
+fi
+
+if [ $DB_VERSION == 'mysql:5.6' ]; then
+cat << EOF >>mysqld.cnf
+sha256_password_private_key_path=/etc/mysql/ssl/test.key
+sha256_password_public_key_path=/etc/mysql/ssl/test.pub
+EOF
+fi
+
+cat << EOF >>mysqld.cnf
 
 [client]
 socket=/var/run/mysqld/mysqld.sock
@@ -29,6 +54,7 @@ sudo docker run \
     --volume=$path/mysqld.cnf:/etc/mysql/conf.d/mysqld.cnf \
     --volume=$path/t/data/test.crt:/etc/mysql/ssl/test.crt \
     --volume=$path/t/data/test.key:/etc/mysql/ssl/test.key \
+    --volume=$path/t/data/test.pub:/etc/mysql/ssl/test.pub \
     ${DB_VERSION}
 
 mysql() {
@@ -49,4 +75,46 @@ docker exec mysqld /bin/sh -c "zcat /tmp/world.sql.gz | mysql -uroot"
 mysql -uroot -e 'create database ngx_test;'
 mysql -uroot -e 'create user "ngx_test"@"%" identified by "ngx_test";'
 mysql -uroot -e 'grant all on ngx_test.* to "ngx_test"@"%";'
+
+if [ $DB_VERSION == 'mysql:8.0' -o $DB_VERSION == 'mysql:5.7' ]; then # sha256_password, mysql_native_password
+    mysql -uroot -e 'create user "user_sha256"@"%" identified with "sha256_password" by "pass_sha256";'
+    mysql -uroot -e 'grant all on ngx_test.* to "user_sha256"@"%";'
+    mysql -uroot -e 'create user "nopass_sha256"@"%" identified with "sha256_password";'
+    mysql -uroot -e 'grant all on ngx_test.* to "nopass_sha256"@"%";'
+
+    if [ $DB_VERSION != 'mysql:5.7' ]; then # mysql:8.0 caching_sha2_password
+        mysql -uroot -e 'create user "user_caching_sha2"@"%" identified with "caching_sha2_password" by "pass_caching_sha2";'
+        mysql -uroot -e 'grant all on ngx_test.* to "user_caching_sha2"@"%";'
+        mysql -uroot -e 'create user "nopass_caching_sha2"@"%" identified with "caching_sha2_password";'
+        mysql -uroot -e 'grant all on ngx_test.* to "nopass_caching_sha2"@"%";'
+    fi
+
+    mysql -uroot -e 'create user "user_native"@"%" identified with "mysql_native_password" by "pass_native";'
+else # other: mysql_native_password, mysql_old_password
+    if [ $DB_VERSION == 'mysql:5.6' ]; then # mysql:5.6 sha256_password
+        mysql -uroot -e 'create user "user_sha256"@"%" identified with "sha256_password";'
+        mysql -uroot -e 'set old_passwords = 2;set password for "user_sha256"@"%" = PASSWORD("pass_sha256");'
+        mysql -uroot -e 'grant all on ngx_test.* to "user_sha256"@"%";'
+        mysql -uroot -e 'create user "nopass_sha256"@"%" identified with "sha256_password";'
+        mysql -uroot -e 'grant all on ngx_test.* to "nopass_sha256"@"%";'
+    fi
+
+    mysql -uroot -e 'create user "user_old"@"%" identified with mysql_old_password;'
+    mysql -uroot -e 'set old_passwords = 1;set password for "user_old"@"%" = PASSWORD("pass_old");'
+    mysql -uroot -e 'grant all on ngx_test.* to "user_old"@"%";'
+    mysql -uroot -e 'create user "nopass_old"@"%" identified with mysql_old_password;'
+    mysql -uroot -e 'set password for "nopass_old"@"%" = "";'
+    mysql -uroot -e 'grant all on ngx_test.* to "nopass_old"@"%";'
+
+    mysql -uroot -e 'create user "user_native"@"%" identified with mysql_native_password;'
+    mysql -uroot -e 'set old_passwords = 0;set password for "user_native"@"%" = PASSWORD("pass_native");'
+fi
+
+mysql -uroot -e 'grant all on ngx_test.* to "user_native"@"%";'
+mysql -uroot -e 'create user "nopass_native"@"%" identified with mysql_native_password;'
+mysql -uroot -e 'grant all on ngx_test.* to "nopass_native"@"%";'
+
+mysql -uroot -e 'select * from information_schema.plugins where  plugin_type="AUTHENTICATION"\G';
+mysql -uroot -e 'select User, plugin from mysql.user\G';
+
 mysql -uroot -e 'grant all on world.* to "ngx_test"@"%"; flush privileges;'
