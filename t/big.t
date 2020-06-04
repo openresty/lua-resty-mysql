@@ -349,7 +349,7 @@ result: [{"name":"' . ('B' x 1024)
 
             ngx.say("table cats dropped.")
 
-            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(65540))")
+            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name text(65540))")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
