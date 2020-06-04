@@ -795,7 +795,7 @@ failed to set keepalive: cannot be reused in the current connection state: 2
                 return
             end
 
-ok, err, errno, sqlstate = db:connect({
+            ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
                 port = $TEST_NGINX_MYSQL_PORT,
                 database = "ngx_test",
