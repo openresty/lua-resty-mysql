@@ -7,3 +7,5 @@ reindex
 tags
 *.t_
 src/
+mysqld.cnf
+download-cache/
