@@ -1651,3 +1651,41 @@ success
 --- no_error_log
 [error]
 --- timeout: 20
+
+=== TEST 24: connected with no error when pool opts are provided
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                host = "$TEST_NGINX_MYSQL_HOST",
+                port = $TEST_NGINX_MYSQL_PORT,
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test",
+                pool = "my_pool",
+                pool_size = 10,
+                backlog = 5
+                })
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            ngx.say("connected to mysql ", db:server_ver())
+
+            db:close()
+        ';
+    }
+--- request
+GET /t
+--- response_body_like
+connected to mysql \d\.[^\s\x00]+
+--- no_error_log
+[error]
