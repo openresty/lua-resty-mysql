@@ -69,7 +69,12 @@ local RESP_LOCALINFILE = "LOCALINFILE"
 local RESP_EOF = "EOF"
 local RESP_ERR = "ERR"
 local RESP_DATA = "DATA"
+
 local MY_RND_MAX_VAL = 0x3FFFFFFF
+local MIN_PROTOCOL_VER = 10
+
+local LEN_NATIVE_SCRAMBLE = 20
+local LEN_OLD_SCRAMBLE = 8
 
 -- 16MB - 1, the default max allowed packet size used by libmysqlclient
 local FULL_PACKET_SIZE = 16777215
@@ -265,7 +270,7 @@ local function _compute_old_token(password, scramble)
         return ""
     end
 
-    scramble = sub(scramble, 1, 8)
+    scramble = sub(scramble, 1, LEN_OLD_SCRAMBLE)
 
     local hash_pw1, hash_pw2 = _pwd_hash(password)
     local hash_sc1, hash_sc2 = _pwd_hash(scramble)
@@ -274,14 +279,14 @@ local function _compute_old_token(password, scramble)
     local seed2 = bxor(hash_pw2, hash_sc2) % MY_RND_MAX_VAL
     local tmp
 
-    local bytes = new_tab(8, 0)
-    for i = 1, 8 do
+    local bytes = new_tab(LEN_OLD_SCRAMBLE, 0)
+    for i = 1, LEN_OLD_SCRAMBLE do
         tmp, seed1, seed2 = _random_byte(seed1, seed2)
         bytes[i] = tmp + 64
     end
 
     tmp = _random_byte(seed1, seed2)
-    for i = 1, 8 do
+    for i = 1, LEN_OLD_SCRAMBLE do
         bytes[i] = strchar(bxor(bytes[i], tmp))
     end
 
@@ -340,7 +345,7 @@ local function _compute_token(password, scramble)
         return ""
     end
 
-    scramble = sub(scramble, 1, 20)
+    scramble = sub(scramble, 1, LEN_NATIVE_SCRAMBLE)
 
     local stage1 = sha1(password)
     local stage2 = sha1(stage1)
@@ -645,6 +650,7 @@ local function _recv_field_packet(self)
 end
 
 
+-- refer to https://dev.mysql.com/doc/internals/en/connection-phase-packets.html
 local function _read_hand_shake_packet(self)
     local packet, typ, err = _recv_packet(self)
     if not packet then
@@ -656,7 +662,19 @@ local function _read_hand_shake_packet(self)
         return nil, nil, msg, errno, sqlstate
     end
 
-    self.protocol_ver = strbyte(packet)
+    local protocol_ver = tonumber(strbyte(packet))
+    if not protocol_ver then
+        return nil, nil,
+            "bad handshake initialization packet: bad protocol version"
+    end
+
+    if protocol_ver < MIN_PROTOCOL_VER then
+        return nil, nil, "unsupported protocol version " .. protocol_ver
+                         .. ", version " .. MIN_PROTOCOL_VER
+                         .. " or higher is required"
+    end
+
+    self.protocol_ver = protocol_ver
 
     local server_ver, pos = _from_cstring(packet, 2)
     if not server_ver then
@@ -673,7 +691,7 @@ local function _read_hand_shake_packet(self)
         return nil, nil, "1st part of scramble not found"
     end
 
-    pos = pos + 9 -- skip filler
+    pos = pos + 9 -- skip filler(8 + 1)
 
     -- two lower bytes
     local capabilities  -- server capabilities
@@ -689,57 +707,25 @@ local function _read_hand_shake_packet(self)
 
     self.capabilities = bor(capabilities, lshift(more_capabilities, 16))
 
-    local len = 21 - 8 - 1
+    pos = pos + 11 -- skip length of auth-plugin-data(1) and reserved(10)
 
-    pos = pos + 1 + 10
-
-    local scramble_part2 = sub(packet, pos, pos + len - 1)
+    -- follow official Python library uses the fixed length 12
+    -- and the 13th byte is "\0 byte
+    local scramble_part2 = sub(packet, pos, pos + 12 - 1)
     if not scramble_part2 then
         return nil, nil, "2nd part of scramble not found"
     end
 
-    local plugin, pos = _from_cstring(packet, pos + len + 1)
+    pos = pos + 13
+
+    local plugin, _ = _from_cstring(packet, pos)
     if not plugin then
-        return nil, nil, "bad handshake initialization packet: bad plugin"
+        -- EOF if version (>= 5.5.7 and < 5.5.10) or (>= 5.6.0 and < 5.6.2)
+		-- \NUL otherwise
+        plugin = sub(packet, pos)
     end
 
     return scramble .. scramble_part2, plugin
-end
-
-
-local function _auth(self, auth_data, plugin)
-    local password = self.password
-
-    if plugin == "caching_sha2_password" then
-        local auth_resp, err = _compute_sha256_token(password, auth_data)
-        if err then
-            return nil, "failed to compute sha256 token: " .. err
-        end
-
-        return auth_resp
-    end
-
-    if plugin == "mysql_old_password" then
-        return _compute_old_token(password, auth_data)
-    end
-
-    if plugin == "mysql_clear_password" then
-        return _to_cstring(password)
-    end
-
-    if plugin == "mysql_native_password" then
-        return _compute_token(password, auth_data)
-    end
-
-    if plugin == "sha256_password" then
-        if self.is_unix or self.use_ssl or #password == 0 then
-            return _to_cstring(password)
-        end
-
-        return "\1" -- request public key from server
-    end
-
-    return nil, "unknown plugin: " .. plugin
 end
 
 
@@ -886,7 +872,7 @@ local function _read_ok_result(self)
 end
 
 
-local function _write_encode_password(self, auth_data, public_key)
+local function _encrypt_password(self, auth_data, public_key)
     if not has_rsa then
         error("auth plugin caching_sha2_password or sha256_password are not" ..
               " supported because resty.rsa is not installed", 2)
@@ -909,18 +895,66 @@ local function _write_encode_password(self, auth_data, public_key)
         algorithm = "sha1",
     })
     if not pub then
-        return "new rsa err: " .. err
+        return nil, "new rsa err: " .. err
     end
 
     local enc, err = pub:encrypt(concat(bytes))
     if not enc then
-        return "encode password packet: " .. err
+        return nil, "encode password packet: " .. err
     end
+
+    return enc
+end
+
+
+local function _write_encode_password(self, auth_data, public_key)
+    local enc, err = _encrypt_password(self, auth_data, public_key)
 
     local bytes, err = _send_packet(self, enc, #enc)
     if not bytes then
         return "failed to send encode password packet: " .. err
     end
+end
+
+
+local function _auth(self, auth_data, plugin)
+    local password = self.password
+
+    if plugin == "caching_sha2_password" then
+        local auth_resp, err = _compute_sha256_token(password, auth_data)
+        if err then
+            return nil, "failed to compute sha256 token: " .. err
+        end
+
+        return auth_resp
+    end
+
+    if plugin == "mysql_old_password" then
+        return _compute_old_token(password, auth_data)
+    end
+
+    if plugin == "mysql_clear_password" then
+        return _to_cstring(password)
+    end
+
+    if plugin == "mysql_native_password" then
+        return _compute_token(password, auth_data)
+    end
+
+    if plugin == "sha256_password" then
+        if self.is_unix or self.use_ssl or #password == 0 then
+            return _to_cstring(password)
+        end
+
+        local public_key = self.public_key
+        if public_key then
+            return _encrypt_password(self, auth_data, public_key)
+        end
+
+        return "\1" -- request public key from server
+    end
+
+    return nil, "unknown plugin: " .. plugin
 end
 
 

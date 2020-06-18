@@ -27,6 +27,7 @@ Table of Contents
 * [Debugging](#debugging)
 * [Automatic Error Logging](#automatic-error-logging)
 * [Limitations](#limitations)
+* [More Authentication Method Support](#more-authentication-method-support)
 * [Installation](#installation)
 * [Community](#community)
     * [English Mailing List](#english-mailing-list)
@@ -492,6 +493,15 @@ each request.
 
 [Back to TOC](#table-of-contents)
 
+More Authentication Method Support
+=========
+
+By default, Of all authentication method, only [Old Password Authentication(mysql_old_password)](https://dev.mysql.com/doc/internals/en/old-password-authentication.html) and [Secure Password Authentication(mysql_native_password)](https://dev.mysql.com/doc/internals/en/secure-password-authentication.html) are suppored. If the server requires [sha256_password](https://dev.mysql.com/doc/internals/en/sha256.html) or cache_sha2_password, an error like `auth plugin caching_sha2_password or sha256_password are not supported because resty.rsa is not installed` may be returned.
+
+Need to install [lua-resty-rsa](https://github.com/spacewander/lua-resty-rsa) to use the `sha256_password` and `cache_sha2_password`.
+
+[Back to TOC](#table-of-contents)
+
 Installation
 ============
 
@@ -519,8 +529,6 @@ tree to ngx_lua's LUA_PATH search path, as in
 
 Ensure that the system account running your Nginx ''worker'' proceses have
 enough permission to read the `.lua` file.
-
-[Back to TOC](#table-of-contents)
 
 Community
 =========
@@ -556,7 +564,6 @@ TODO
 
 * improve the MySQL connection pool support.
 * implement the MySQL binary row data packets.
-* implement MySQL's old pre-4.0 authentication method.
 * implement MySQL server prepare and execute packets.
 * implement the data compression support in the protocol.
 
