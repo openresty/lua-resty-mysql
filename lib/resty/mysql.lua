@@ -721,7 +721,7 @@ local function _read_hand_shake_packet(self)
     local plugin, _ = _from_cstring(packet, pos)
     if not plugin then
         -- EOF if version (>= 5.5.7 and < 5.5.10) or (>= 5.6.0 and < 5.6.2)
-		-- \NUL otherwise
+        -- \NUL otherwise
         plugin = sub(packet, pos)
     end
 
@@ -1371,12 +1371,6 @@ local function read_result(self, est_nrows)
 
             break
         end
-
-        -- if typ ~= RESP_DATA then
-            -- return nil, 'bad row packet type: ' .. typ
-        -- end
-
-        -- typ == RESP_DATA
 
         local row = _parse_row_data_packet(packet, cols, compact)
         i = i + 1
