@@ -1170,7 +1170,7 @@ function _M.connect(self, opts)
         return 1
     end
 
-    local client_flags = 0x3f7cf;
+    local client_flags = 0x3f7cf
     self.client_flags = bor(client_flags, CLIENT_PLUGIN_AUTH)
 
     local auth_data, plugin, err, errno, sqlstate

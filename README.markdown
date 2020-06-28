@@ -498,7 +498,7 @@ More Authentication Method Support
 
 By default, Of all authentication method, only [Old Password Authentication(mysql_old_password)](https://dev.mysql.com/doc/internals/en/old-password-authentication.html) and [Secure Password Authentication(mysql_native_password)](https://dev.mysql.com/doc/internals/en/secure-password-authentication.html) are suppored. If the server requires [sha256_password](https://dev.mysql.com/doc/internals/en/sha256.html) or cache_sha2_password, an error like `auth plugin caching_sha2_password or sha256_password are not supported because resty.rsa is not installed` may be returned.
 
-Need to install [lua-resty-rsa](https://github.com/spacewander/lua-resty-rsa) to use the `sha256_password` and `cache_sha2_password`.
+Need [lua-resty-rsa](https://github.com/spacewander/lua-resty-rsa) when using the `sha256_password` and `cache_sha2_password`.
 
 [Back to TOC](#table-of-contents)
 
