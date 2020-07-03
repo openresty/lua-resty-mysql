@@ -1698,7 +1698,7 @@ connected to mysql \d\.[^\s\x00]+
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
-        content_by_lua '
+        content_by_lua_block {
             local mysql = require "resty.mysql"
 
             local function mysql_conn()
@@ -1728,7 +1728,7 @@ connected to mysql \d\.[^\s\x00]+
                 end
             end
             ngx.say("connected to mysql")
-        ';
+        }
     }
 --- request
 GET /t
@@ -1743,7 +1743,7 @@ connected to mysql
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
-        content_by_lua '
+        content_by_lua_block {
             local mysql = require "resty.mysql"
 
             local function mysql_conn()
@@ -1769,7 +1769,7 @@ connected to mysql
             for i = 1,15 do
                 ngx.thread.spawn(mysql_conn)
             end
-        ';
+        }
     }
 --- request
 GET /t
