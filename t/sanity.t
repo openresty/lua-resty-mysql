@@ -1651,3 +1651,138 @@ success
 --- no_error_log
 [error]
 --- timeout: 20
+
+
+
+=== TEST 24: connected with no error when pool opts are provided
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            local mysql = require "resty.mysql"
+            local db = mysql:new()
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect({
+                host = "$TEST_NGINX_MYSQL_HOST",
+                port = $TEST_NGINX_MYSQL_PORT,
+                database = "ngx_test",
+                user = "ngx_test",
+                password = "ngx_test",
+                pool = "my_pool",
+                pool_size = 10,
+                backlog = 5
+                })
+
+            if not ok then
+                ngx.say("failed to connect: ", err, ": ", errno, " ", sqlstate)
+                return
+            end
+
+            ngx.say("connected to mysql ", db:server_ver())
+
+            db:close()
+        ';
+    }
+--- request
+GET /t
+--- response_body_like
+connected to mysql \d\.[^\s\x00]+
+--- no_error_log
+[error]
+
+
+
+=== TEST 25: set pool_size option no backlog option
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local mysql = require "resty.mysql"
+
+            local function mysql_conn()
+                local db = mysql:new()
+                db:set_timeout(1000) -- 1 sec
+
+                local ok, err, errno, sqlstate = db:connect({
+                    host = "$TEST_NGINX_MYSQL_HOST",
+                    port = $TEST_NGINX_MYSQL_PORT,
+                    database = "ngx_test",
+                    user = "ngx_test",
+                    password = "ngx_test",
+                    pool = "my_pool",
+                    pool_size = 5
+                })
+                if not ok then
+                    return err
+                end
+                return nil
+            end
+
+            for i = 1,10 do
+                local err = mysql_conn()
+                if err ~= nil then
+                    ngx.say(err)
+                    return
+                end
+            end
+            ngx.say("connected to mysql")
+        }
+    }
+--- request
+GET /t
+--- response_body_like
+connected to mysql
+--- no_error_log
+[error]
+
+
+
+=== TEST 26: set the pool_size and backlog options at the same time
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local mysql = require "resty.mysql"
+
+            local function mysql_conn()
+                local db = mysql:new()
+                db:set_timeout(1000) -- 1 sec
+
+                local ok, err, errno, sqlstate = db:connect({
+                    host = "$TEST_NGINX_MYSQL_HOST",
+                    port = $TEST_NGINX_MYSQL_PORT,
+                    database = "ngx_test",
+                    user = "ngx_test",
+                    password = "ngx_test",
+                    pool = "my_pool",
+                    pool_size = 5,
+                    backlog = 5
+                })
+                if not ok then
+                    ngx.say(err)
+                    return err
+                end
+                return nil
+            end
+            for i = 1,15 do
+                ngx.thread.spawn(mysql_conn)
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body_like
+failed to connect: too many waiting connect operations
+failed to connect: too many waiting connect operations
+failed to connect: too many waiting connect operations
+failed to connect: too many waiting connect operations
+failed to connect: too many waiting connect operations
+failed to connect: timeout
+failed to connect: timeout
+failed to connect: timeout
+failed to connect: timeout
+failed to connect: timeout
+--- error_log
+lua tcp socket queued connect timed out
