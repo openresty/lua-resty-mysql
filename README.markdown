@@ -530,6 +530,8 @@ tree to ngx_lua's LUA_PATH search path, as in
 Ensure that the system account running your Nginx ''worker'' proceses have
 enough permission to read the `.lua` file.
 
+[Back to TOC](#table-of-contents)
+
 Community
 =========
 

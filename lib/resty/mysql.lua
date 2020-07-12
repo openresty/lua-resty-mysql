@@ -57,9 +57,17 @@ local STATE_COMMAND_SENT = 2
 
 local COM_QUIT = 0x01
 local COM_QUERY = 0x03
-local CLIENT_SSL = 0x0800
-local CLIENT_PLUGIN_AUTH = 0x80000
-local CLIENT_PLUGIN_AUTH_LEN_ENC_CLIENT_DATA = 0x200000
+
+-- refer to https://dev.mysql.com/doc/internals/en/capability-flags.html#packet-Protocol::CapabilityFlags
+-- CLIENT_LONG_PASSWORD | CLIENT_FOUND_ROWS | CLIENT_LONG_FLAG
+-- | CLIENT_CONNECT_WITH_DB | CLIENT_ODBC | CLIENT_LOCAL_FILES
+-- | CLIENT_IGNORE_SPACE | CLIENT_PROTOCOL_41 | CLIENT_INTERACTIVE
+-- | CLIENT_IGNORE_SIGPIPE | CLIENT_TRANSACTIONS | CLIENT_RESERVED
+-- | CLIENT_SECURE_CONNECTION | CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS
+local DEFAULT_CLIENT_FLAGS = 0x3f7cf
+local CLIENT_SSL = 0x00000800
+local CLIENT_PLUGIN_AUTH = 0x00080000
+local CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA = 0x00200000
 
 local SERVER_MORE_RESULTS_EXISTS = 8
 
@@ -240,15 +248,14 @@ local function _pwd_hash(password)
     local len = #password
     for i = 1, len do
         -- skip spaces and tabs in password
-        local tmp = strbyte(password, i)
-        local c = strchar(tmp)
-        if c ~= ' ' and c ~= '\t' then
-            hash1 = bxor(hash1, (band(hash1, 63) + add) * tmp
+        local byte = strbyte(password, i)
+        if byte ~= 32 and byte ~= 9 then -- not ' ' or '\t'
+            hash1 = bxor(hash1, (band(hash1, 63) + add) * byte
                                 + lshift(hash1, 8))
 
             hash2 = bxor(lshift(hash2, 8), hash1) + hash2
 
-            add = add + tmp
+            add = add + byte
         end
     end
 
@@ -277,17 +284,17 @@ local function _compute_old_token(password, scramble)
 
     local seed1 = bxor(hash_pw1, hash_sc1) % MY_RND_MAX_VAL
     local seed2 = bxor(hash_pw2, hash_sc2) % MY_RND_MAX_VAL
-    local tmp
+    local rand_byte
 
     local bytes = new_tab(LEN_OLD_SCRAMBLE, 0)
     for i = 1, LEN_OLD_SCRAMBLE do
-        tmp, seed1, seed2 = _random_byte(seed1, seed2)
-        bytes[i] = tmp + 64
+        rand_byte, seed1, seed2 = _random_byte(seed1, seed2)
+        bytes[i] = rand_byte + 64
     end
 
-    tmp = _random_byte(seed1, seed2)
+    rand_byte = _random_byte(seed1, seed2)
     for i = 1, LEN_OLD_SCRAMBLE do
-        bytes[i] = strchar(bxor(bytes[i], tmp))
+        bytes[i] = strchar(bxor(bytes[i], rand_byte))
     end
 
     return _to_cstring(concat(bytes))
@@ -737,8 +744,8 @@ local function _append_auth_length(self, data)
         return data, 1 + n
     end
 
-    self.client_flags = bor(self.client_flags,
-                            CLIENT_PLUGIN_AUTH_LEN_ENC_CLIENT_DATA)
+    self.DEFAULT_CLIENT_FLAGS = bor(self.DEFAULT_CLIENT_FLAGS,
+                            CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA)
 
     if n <= 0xffff then
         data = strchar(0xfc, band(n, 0xff), band(rshift(n, 8), 0xff)) .. data
@@ -777,7 +784,7 @@ local function _write_hand_shake_response(self, auth_resp, plugin)
         end
 
         -- send a SSL Request Packet
-        local req = _set_byte4(bor(self.client_flags, CLIENT_SSL))
+        local req = _set_byte4(bor(self.DEFAULT_CLIENT_FLAGS, CLIENT_SSL))
                     .. _set_byte4(self._max_packet_size)
                     .. strchar(self.charset)
                     .. strrep("\0", 23)
@@ -796,7 +803,7 @@ local function _write_hand_shake_response(self, auth_resp, plugin)
         end
     end
 
-    local req = _set_byte4(self.client_flags)
+    local req = _set_byte4(self.DEFAULT_CLIENT_FLAGS)
                 .. _set_byte4(self._max_packet_size)
                 .. strchar(self.charset)
                 .. strrep("\0", 23)
@@ -1141,8 +1148,9 @@ function _M.connect(self, opts)
                    .. port
         end
 
-        ok, err = sock:connect(host, port, { pool = pool, pool_size = opts.pool_size,
-                               backlog = opts.backlog})
+        ok, err = sock:connect(host, port, { pool = pool,
+                               pool_size = opts.pool_size,
+                               backlog = opts.backlog })
 
     else
         local path = opts.path
@@ -1155,8 +1163,9 @@ function _M.connect(self, opts)
         end
 
         self.is_unix = true
-        ok, err = sock:connect("unix:" .. path, { pool = pool, pool_size = opts.pool_size,
-                               backlog = opts.backlog})
+        ok, err = sock:connect("unix:" .. path, { pool = pool,
+                               pool_size = opts.pool_size,
+                               backlog = opts.backlog })
     end
 
     if not ok then
@@ -1170,8 +1179,7 @@ function _M.connect(self, opts)
         return 1
     end
 
-    local client_flags = 0x3f7cf
-    self.client_flags = bor(client_flags, CLIENT_PLUGIN_AUTH)
+    self.DEFAULT_CLIENT_FLAGS = bor(DEFAULT_CLIENT_FLAGS, CLIENT_PLUGIN_AUTH)
 
     local auth_data, plugin, err, errno, sqlstate
         = _read_hand_shake_packet(self)
