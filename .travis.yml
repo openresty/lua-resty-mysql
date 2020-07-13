@@ -36,6 +36,7 @@ env:
     - NGINX_VERSION=1.17.8 DB_VERSION=mysql:5.5
     - NGINX_VERSION=1.17.8 DB_VERSION=mysql:5.6
     - NGINX_VERSION=1.17.8 DB_VERSION=mysql:5.7
+    - NGINX_VERSION=1.17.8 DB_VERSION=mysql:8.0
     - NGINX_VERSION=1.17.8 DB_VERSION=mariadb:5.5
     - NGINX_VERSION=1.17.8 DB_VERSION=mariadb:10.0
     - NGINX_VERSION=1.17.8 DB_VERSION=mariadb:10.1
@@ -51,8 +52,12 @@ install:
   - git clone https://github.com/openresty/stream-lua-nginx-module.git ../stream-lua-nginx-module
   - git clone https://github.com/openresty/lua-resty-core.git ../lua-resty-core
   - git clone https://github.com/openresty/lua-resty-lrucache.git ../lua-resty-lrucache
+  - git clone https://github.com/openresty/lua-resty-string.git ../lua-resty-string
   - git clone https://github.com/openresty/no-pool-nginx.git ../no-pool-nginx
   - git clone -b v2.1-agentzh https://github.com/openresty/luajit2.git luajit2
+  - git clone https://github.com/spacewander/lua-resty-rsa.git ../lua-resty-rsa
+  - cp -rf ../lua-resty-rsa/lib/resty/* lib/resty/
+  - cp -rf ../lua-resty-string/lib/resty/* lib/resty/
 
 before_script:
   - sudo service mysql stop
@@ -63,7 +68,7 @@ before_script:
   - cd ..
 
 script:
-  - cd test-nginx && (sudo cpanm . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
+  - cd test-nginx && (sudo cpanm --notest . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
   - cd lua-cjson && (LUA_INCLUDE_DIR=$LUAJIT_INC make && sudo PATH=$PATH make install) || (cat build.log && exit 1) && cd ..
   - export PATH=$PWD/work/nginx/sbin:$PWD/nginx-devel-utils:$PATH
   - ngx-build $NGINX_VERSION --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-stream --with-stream_ssl_module --with-stream_ssl_preread_module --add-module=../lua-nginx-module --add-module=../stream-lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
