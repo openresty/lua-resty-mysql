@@ -32,6 +32,10 @@ env:
     - LD_LIBRARY_PATH=$LUAJIT_LIB:$LD_LIBRARY_PATH
     - TEST_NGINX_MYSQL_PATH=/var/run/mysqld/mysqld.sock
     - TEST_NGINX_SLEEP=0.006
+    - OPENSSL_PREFIX=/opt/ssl
+    - OPENSSL_LIB=$OPENSSL_PREFIX/lib
+    - OPENSSL_INC=$OPENSSL_PREFIX/include
+    - OPENSSL_VER=1.1.1f
   jobs:
     - NGINX_VERSION=1.17.8 DB_VERSION=mysql:5.5
     - NGINX_VERSION=1.17.8 DB_VERSION=mysql:5.6
@@ -44,6 +48,8 @@ env:
     - NGINX_VERSION=1.17.8 DB_VERSION=mariadb:10.3
 
 install:
+  - if [ ! -d download-cache ]; then mkdir download-cache; fi
+  - if [ ! -f download-cache/openssl-$OPENSSL_VER.tar.gz ]; then wget -O download-cache/openssl-$OPENSSL_VER.tar.gz https://www.openssl.org/source/openssl-$OPENSSL_VER.tar.gz; fi
   - git clone https://github.com/openresty/test-nginx.git
   - git clone https://github.com/openresty/openresty.git ../openresty
   - git clone https://github.com/openresty/nginx-devel-utils.git
@@ -68,8 +74,13 @@ before_script:
   - cd ..
 
 script:
+  - tar zxf download-cache/openssl-$OPENSSL_VER.tar.gz
+  - cd openssl-$OPENSSL_VER/
+  - ./config shared --prefix=$OPENSSL_PREFIX -DPURIFY > build.log 2>&1 || (cat build.log && exit 1)
+  - make -j$JOBS > build.log 2>&1 || (cat build.log && exit 1)
+  - sudo make PATH=$PATH install_sw > build.log 2>&1 || (cat build.log && exit 1) && cd ..
   - cd test-nginx && (sudo cpanm --notest . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
   - cd lua-cjson && (LUA_INCLUDE_DIR=$LUAJIT_INC make && sudo PATH=$PATH make install) || (cat build.log && exit 1) && cd ..
   - export PATH=$PWD/work/nginx/sbin:$PWD/nginx-devel-utils:$PATH
-  - ngx-build $NGINX_VERSION --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-stream --with-stream_ssl_module --with-stream_ssl_preread_module --add-module=../lua-nginx-module --add-module=../stream-lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
+  - ngx-build $NGINX_VERSION --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-cc-opt="-I$OPENSSL_INC" --with-ld-opt="-L$OPENSSL_LIB -Wl,-rpath,$OPENSSL_LIB" --with-stream --with-stream_ssl_module --with-stream_ssl_preread_module --add-module=../lua-nginx-module --add-module=../stream-lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
   - prove -r t
