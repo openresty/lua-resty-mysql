@@ -47,7 +47,7 @@ if not ok then
 end
 
 
-local _M = { _VERSION = '0.22' }
+local _M = { _VERSION = '0.23' }
 
 
 -- constants
