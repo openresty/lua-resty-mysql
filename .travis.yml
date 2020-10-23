@@ -62,8 +62,6 @@ install:
   - git clone https://github.com/openresty/no-pool-nginx.git ../no-pool-nginx
   - git clone -b v2.1-agentzh https://github.com/openresty/luajit2.git luajit2
   - git clone https://github.com/spacewander/lua-resty-rsa.git ../lua-resty-rsa
-  - cp -rf ../lua-resty-rsa/lib/resty/* lib/resty/
-  - cp -rf ../lua-resty-string/lib/resty/* lib/resty/
 
 before_script:
   - sudo service mysql stop
