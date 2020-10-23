@@ -10,7 +10,7 @@ plan tests => repeat_each() * (3 * blocks());
 my $pwd = cwd();
 
 our $HttpConfig = qq{
-    lua_package_path "$pwd/lib/?.lua;;";
+    lua_package_path "$pwd/lib/?.lua;$pwd/t/lib/?.lua;$pwd/../lua-resty-rsa/lib/?.lua;$pwd/../lua-resty-string/lib/?.lua;;";
 };
 
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';

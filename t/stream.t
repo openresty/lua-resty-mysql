@@ -11,7 +11,7 @@ my $pwd = cwd();
 
 our $StreamConfig = qq{
     resolver \$TEST_NGINX_RESOLVER;
-    lua_package_path "$pwd/lib/?.lua;$pwd/t/lib/?.lua;;";
+    lua_package_path "$pwd/lib/?.lua;$pwd/t/lib/?.lua;$pwd/../lua-resty-rsa/lib/?.lua;$pwd/../lua-resty-string/lib/?.lua;;";
     lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
 };
 
