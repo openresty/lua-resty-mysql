@@ -2,7 +2,7 @@
 
 set -ex
 
-if [ "$DB_VERSION" == 'mysql:8.0' -o "$DB_VERSION" == 'mariadb:10.3' ]; then
+if [ $DB_VERSION == 'mysql:8.0' -o $DB_VERSION == 'mariadb:10.3' ]; then
     sudo cp t/data/test-sha256.crt t/data/test.crt
     sudo cp t/data/test-sha256.key t/data/test.key
 else
@@ -19,13 +19,13 @@ ssl-key=/etc/mysql/ssl/test.key
 socket=/var/run/mysqld/mysqld.sock
 EOF
 
-if [ "$DB_VERSION" != 'mysql:8.0' -a "$DB_VERSION" != 'mysql:5.7' ]; then
+if [ $DB_VERSION != 'mysql:8.0' -a $DB_VERSION != 'mysql:5.7' ]; then
 cat << EOF >>mysqld.cnf
 secure-auth=0
 EOF
 fi
 
-if [ "$DB_VERSION" == 'mysql:5.6' ]; then
+if [ $DB_VERSION == 'mysql:5.6' ]; then
 cat << EOF >>mysqld.cnf
 sha256_password_private_key_path=/etc/mysql/ssl/test.key
 sha256_password_public_key_path=/etc/mysql/ssl/test.pub
@@ -48,6 +48,8 @@ if [ "$(sudo docker ps -a --filter "name=^/$container_name$" --format '{{.Names}
     sudo docker rm $container_name
 fi
 
+sudo chmod -R 777 /var/run/mysqld
+sudo docker pull ${DB_VERSION}
 sudo docker run \
     -itd \
     --privileged \
@@ -83,13 +85,13 @@ mysql -uroot -e 'create database ngx_test;'
 mysql -uroot -e 'create user "ngx_test"@"%" identified by "ngx_test";'
 mysql -uroot -e 'grant all on ngx_test.* to "ngx_test"@"%";'
 
-if [ "$DB_VERSION" == 'mysql:8.0' -o "$DB_VERSION" == 'mysql:5.7' ]; then # sha256_password, mysql_native_password
+if [ $DB_VERSION == 'mysql:8.0' -o $DB_VERSION == 'mysql:5.7' ]; then # sha256_password, mysql_native_password
     mysql -uroot -e 'create user "user_sha256"@"%" identified with "sha256_password" by "pass_sha256";'
     mysql -uroot -e 'grant all on ngx_test.* to "user_sha256"@"%";'
     mysql -uroot -e 'create user "nopass_sha256"@"%" identified with "sha256_password";'
     mysql -uroot -e 'grant all on ngx_test.* to "nopass_sha256"@"%";'
 
-    if [ "$DB_VERSION" != 'mysql:5.7' ]; then # mysql:8.0 caching_sha2_password
+    if [ $DB_VERSION != 'mysql:5.7' ]; then # mysql:8.0 caching_sha2_password
         mysql -uroot -e 'create user "user_caching_sha2"@"%" identified with "caching_sha2_password" by "pass_caching_sha2";'
         mysql -uroot -e 'grant all on ngx_test.* to "user_caching_sha2"@"%";'
         mysql -uroot -e 'create user "nopass_caching_sha2"@"%" identified with "caching_sha2_password";'
@@ -98,7 +100,7 @@ if [ "$DB_VERSION" == 'mysql:8.0' -o "$DB_VERSION" == 'mysql:5.7' ]; then # sha2
 
     mysql -uroot -e 'create user "user_native"@"%" identified with "mysql_native_password" by "pass_native";'
 else # other: mysql_native_password, mysql_old_password
-    if [ "$DB_VERSION" == 'mysql:5.6' ]; then # mysql:5.6 sha256_password
+    if [ $DB_VERSION == 'mysql:5.6' ]; then # mysql:5.6 sha256_password
         mysql -uroot -e 'create user "user_sha256"@"%" identified with "sha256_password";'
         mysql -uroot -e 'set old_passwords = 2;set password for "user_sha256"@"%" = PASSWORD("pass_sha256");'
         mysql -uroot -e 'grant all on ngx_test.* to "user_sha256"@"%";'
