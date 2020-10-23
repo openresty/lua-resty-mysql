@@ -69,7 +69,7 @@ sudo docker run \
 mysql() {
     sudo docker exec mysqld mysql "${@}"
 }
-for i in {1..100} :
+for i in {1..100}
 do
     sleep 3
     mysql --protocol=tcp -e 'select version()' && break
