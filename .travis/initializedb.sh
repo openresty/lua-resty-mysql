@@ -41,8 +41,6 @@ EOF
 path=`pwd`
 container_name=mysqld
 
-sudo chmod -R 777 /var/run/mysqld
-sudo docker pull ${DB_VERSION}
 if [ "$(sudo docker ps -a --filter "name=^/$container_name$" --format '{{.Names}}')" == "$container_name" ]; then
     sudo docker stop $container_name
     sudo docker rm $container_name
