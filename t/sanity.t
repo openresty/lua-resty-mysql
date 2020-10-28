@@ -1,24 +1,10 @@
 # vim:set ft= ts=4 sw=4 et:
 
-use Test::Nginx::Socket::Lua;
-use Cwd qw(cwd);
+use t::Test;
 
 repeat_each(2);
 
 plan tests => repeat_each() * (3 * blocks() + 4);
-
-my $pwd = cwd();
-
-our $HttpConfig = qq{
-    resolver \$TEST_NGINX_RESOLVER;
-    lua_package_path "$pwd/lib/?.lua;$pwd/t/lib/?.lua;$pwd/../lua-resty-rsa/lib/?.lua;$pwd/../lua-resty-string/lib/?.lua;;";
-    lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
-};
-
-$ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
-$ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
-$ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
-$ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
 #log_level 'warn';
 
@@ -31,9 +17,7 @@ run_tests();
 __DATA__
 
 === TEST 1: bad user
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -54,9 +38,6 @@ __DATA__
 
             db:close()
         ';
-    }
---- request
-GET /t
 --- response_body_like
 failed to connect: Access denied for user 'user_not_found'@'[^\s]+' \(using password: YES\): 1045 28000
 --- no_error_log
@@ -65,9 +46,7 @@ failed to connect: Access denied for user 'user_not_found'@'[^\s]+' \(using pass
 
 
 === TEST 2: bad host
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -88,9 +67,6 @@ failed to connect: Access denied for user 'user_not_found'@'[^\s]+' \(using pass
 
             db:close()
         ';
-    }
---- request
-GET /t
 --- response_body_like chop
 ^failed to connect: failed to connect: host-not-found.org could not be resolved(?: \(3: Host not found\))?: nil nil$
 --- no_error_log
@@ -100,9 +76,7 @@ GET /t
 
 
 === TEST 3: connected
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -125,9 +99,6 @@ GET /t
 
             db:close()
         ';
-    }
---- request
-GET /t
 --- response_body_like
 connected to mysql \d\.[^\s\x00]+
 --- no_error_log
@@ -136,9 +107,7 @@ connected to mysql \d\.[^\s\x00]+
 
 
 === TEST 4: send query w/o result set
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -180,9 +149,6 @@ connected to mysql \d\.[^\s\x00]+
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body_like chop
 ^connected to mysql \d\.[^\s\x00]+\.
 sent 30 bytes\.
@@ -193,9 +159,7 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
 
 
 === TEST 5: send bad query
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -238,9 +202,6 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body_like chop
 ^connected to mysql \d\.[^\s\x00]+\.
 sent 12 bytes\.
@@ -251,9 +212,7 @@ bad result: You have an error in your SQL syntax; check the manual that correspo
 
 
 === TEST 6: select query with an non-empty result set
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -322,9 +281,6 @@ bad result: You have an error in your SQL syntax; check the manual that correspo
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body
 connected to mysql.
 table cats dropped.
@@ -338,9 +294,7 @@ result: [{"id":"3","name":null},{"id":"2","name":""},{"id":"1","name":"Bob"}]
 
 
 === TEST 7: select query with an empty result set
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -401,9 +355,6 @@ result: [{"id":"3","name":null},{"id":"2","name":""},{"id":"1","name":"Bob"}]
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body
 connected to mysql.
 table cats dropped.
@@ -416,9 +367,7 @@ result: []
 
 
 === TEST 8: numerical types
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -487,9 +436,6 @@ result: []
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body
 connected to mysql.
 table foo dropped.
@@ -504,9 +450,7 @@ result: [{"bah":null,"bar":null,"baz":null,"blah":null,"hah":null,"haha":null,"i
 
 
 === TEST 9: multiple DDL statements
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -571,9 +515,6 @@ result: [{"bah":null,"bar":null,"baz":null,"blah":null,"hah":null,"haha":null,"i
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body
 connected to mysql.
 result: {"affected_rows":0,"insert_id":0,"server_status":10,"warning_count":0}, err:again
@@ -584,9 +525,7 @@ bad result: failed to send query: cannot send query in the current context: 2: n
 
 
 === TEST 10: multiple select queries
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -662,9 +601,6 @@ bad result: failed to send query: cannot send query in the current context: 2: n
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body
 connected to mysql.
 table cats dropped.
@@ -678,9 +614,7 @@ result: [{"id":"3","name":null},{"id":"2","name":""},{"id":"1","name":"Bob"}], e
 
 
 === TEST 11: set_keepalive in the wrong state
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -748,9 +682,6 @@ result: [{"id":"3","name":null},{"id":"2","name":""},{"id":"1","name":"Bob"}], e
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body
 connected to mysql.
 table cats dropped.
@@ -764,9 +695,7 @@ failed to set keepalive: cannot be reused in the current connection state: 2
 
 
 === TEST 12: set keepalive (tcp)
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -819,9 +748,6 @@ failed to set keepalive: cannot be reused in the current connection state: 2
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
@@ -836,9 +762,7 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
 
 
 === TEST 13: send query w/o result set (unix domain socket)
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -879,9 +803,6 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body_like chop
 ^connected to mysql \d\.[^\s\x00]+\.
 sent 30 bytes\.
@@ -892,9 +813,7 @@ result: (?:\{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0
 
 
 === TEST 14: null at the beginning of a row
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -964,9 +883,6 @@ result: (?:\{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body
 connected to mysql.
 table cats dropped.
@@ -980,9 +896,7 @@ result: [{"name":null},{"name":""},{"name":"Bob"}]
 
 
 === TEST 15: set keepalive (uds)
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -1034,9 +948,6 @@ result: [{"name":null},{"name":""},{"name":"Bob"}]
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
@@ -1051,9 +962,7 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
 
 
 === TEST 16: set keepalive (explicit pool name)
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -1108,9 +1017,6 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
@@ -1125,9 +1031,7 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
 
 
 === TEST 17: the mysql newdecimal type
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -1182,9 +1086,6 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body_like chop
 ^connected to mysql: [02]
 connected to mysql: [13]
@@ -1199,9 +1100,7 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
 
 
 === TEST 18: large insert_id exceeding a 32-bit integer value
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local mysql = require("resty.mysql")
             local create_sql = [[
@@ -1250,9 +1149,6 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
                 ngx.say(res.insert_id)
             end
         ';
-    }
---- request
-GET /t
 --- response_body
 5000000312
 --- no_error_log
@@ -1261,9 +1157,7 @@ GET /t
 
 
 === TEST 19: fix packet number overflow
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua_block {
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -1321,9 +1215,6 @@ GET /t
 
             ngx.say("success")
         }
-    }
---- request
-GET /t
 --- response_body
 success
 --- no_error_log
@@ -1333,9 +1224,7 @@ success
 
 
 === TEST 20: 251 columns
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua_block {
             local mysql = require "resty.mysql"
             local sql = require "create_sql_by_columns"
@@ -1401,9 +1290,6 @@ success
 
             ngx.say("success")
         }
-    }
---- request
-GET /t
 --- response_body
 success
 --- no_error_log
@@ -1413,9 +1299,7 @@ success
 
 
 === TEST 21: MySQL has hard limit of 4096 columns per table
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua_block {
             local mysql = require "resty.mysql"
             local sql = require "create_sql_by_columns"
@@ -1481,9 +1365,6 @@ success
 
             ngx.say("success")
         }
-    }
---- request
-GET /t
 --- response_body_like
 bad result: .*Too many columns.*.
 
@@ -1494,9 +1375,7 @@ bad result: .*Too many columns.*.
 
 
 === TEST 22: InnoDB has a limit of 1017 columns per table
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua_block {
             local mysql = require "resty.mysql"
             local sql = require "create_sql_by_columns"
@@ -1562,9 +1441,6 @@ bad result: .*Too many columns.*.
 
             ngx.say("success")
         }
-    }
---- request
-GET /t
 --- response_body_like chomp
 bad result: .*?(?:Too many columns|Can't create table 'ngx_test\.test1018' \(errno: 139\))
 
@@ -1575,9 +1451,7 @@ bad result: .*?(?:Too many columns|Can't create table 'ngx_test\.test1018' \(err
 
 
 === TEST 23: MyISAM columns per table > 1017
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua_block {
             local mysql = require "resty.mysql"
             local sql = require "create_sql_by_columns"
@@ -1643,9 +1517,6 @@ bad result: .*?(?:Too many columns|Can't create table 'ngx_test\.test1018' \(err
 
             ngx.say("success")
         }
-    }
---- request
-GET /t
 --- response_body
 success
 --- no_error_log
@@ -1655,9 +1526,7 @@ success
 
 
 === TEST 24: connected with no error when pool opts are provided
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -1684,9 +1553,6 @@ success
 
             db:close()
         ';
-    }
---- request
-GET /t
 --- response_body_like
 connected to mysql \d\.[^\s\x00]+
 --- no_error_log
@@ -1695,9 +1561,7 @@ connected to mysql \d\.[^\s\x00]+
 
 
 === TEST 25: set pool_size option no backlog option
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua_block {
             local mysql = require "resty.mysql"
 
@@ -1729,9 +1593,6 @@ connected to mysql \d\.[^\s\x00]+
             end
             ngx.say("connected to mysql")
         }
-    }
---- request
-GET /t
 --- response_body_like
 connected to mysql
 --- no_error_log
@@ -1740,9 +1601,7 @@ connected to mysql
 
 
 === TEST 26: set the pool_size and backlog options at the same time
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua_block {
             local mysql = require "resty.mysql"
 
@@ -1770,9 +1629,6 @@ connected to mysql
                 ngx.thread.spawn(mysql_conn)
             end
         }
-    }
---- request
-GET /t
 --- response_body_like
 failed to connect: too many waiting connect operations
 failed to connect: too many waiting connect operations

@@ -1,24 +1,10 @@
 # vim:set ft= ts=4 sw=4 et:
 
-use Test::Nginx::Socket::Lua;
-use Cwd qw(cwd);
+use t::Test;
 
 repeat_each(5);
 
 plan tests => repeat_each() * (2 * blocks());
-
-my $pwd = cwd();
-
-our $HttpConfig = qq{
-    resolver \$TEST_NGINX_RESOLVER;
-    lua_package_path "$pwd/t/servroot/html/?.lua;$pwd/lib/?.lua;$pwd/t/lib/?.lua;$pwd/../lua-resty-rsa/lib/?.lua;$pwd/../lua-resty-string/lib/?.lua;;";
-    lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
-};
-
-$ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
-$ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
-$ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
-$ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
 #log_level 'warn';
 
@@ -143,9 +129,7 @@ __DATA__
 === TEST 1: test different auth plugin
 --- main_config
     env DB_VERSION;
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua_block {
             local test_suit = require "test_suit"
             test_suit.prepare()
@@ -256,8 +240,5 @@ __DATA__
                 end
             end
         }
-    }
---- request
-GET /t
 --- no_error_log
 [error]
