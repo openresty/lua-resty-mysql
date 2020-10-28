@@ -1,24 +1,10 @@
 # vim:set ft= ts=4 sw=4 et:
 
-use Test::Nginx::Socket::Lua;
-use Cwd qw(cwd);
+use t::Test;
 
 repeat_each(2);
 
 plan tests => repeat_each() * (3 * blocks());
-
-my $pwd = cwd();
-
-our $HttpConfig = qq{
-    resolver \$TEST_NGINX_RESOLVER;
-    lua_package_path "$pwd/lib/?.lua;$pwd/t/lib/?.lua;$pwd/../lua-resty-rsa/lib/?.lua;$pwd/../lua-resty-string/lib/?.lua;;";
-    lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
-};
-
-$ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
-$ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
-$ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
-$ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
 #log_level 'warn';
 
@@ -31,9 +17,7 @@ run_tests();
 __DATA__
 
 === TEST 1: connect db using charset option (utf8)
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua_block {
             local ljson = require "ljson"
             local mysql = require "resty.mysql"
@@ -84,9 +68,6 @@ __DATA__
 
             ngx.say(ljson.encode(res))
         }
-    }
---- request
-GET /t
 --- response_body
 [{"id":"1","name":"愛麗絲"}]
 --- no_error_log
@@ -95,9 +76,7 @@ GET /t
 
 
 === TEST 2: connect db using charset option (big5)
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua_block {
             local ljson = require "ljson"
             local mysql = require "resty.mysql"
@@ -148,9 +127,6 @@ GET /t
 
             ngx.say(ljson.encode(res))
         }
-    }
---- request
-GET /t
 --- response_body eval
 qq/[{"id":"1","name":"\x{b7}R\x{c4}R\x{b5}\x{b7}"}]\n/
 --- no_error_log
@@ -159,9 +135,7 @@ qq/[{"id":"1","name":"\x{b7}R\x{c4}R\x{b5}\x{b7}"}]\n/
 
 
 === TEST 3: connect db using charset option (gbk)
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua_block {
             local ljson = require "ljson"
             local mysql = require "resty.mysql"
@@ -212,9 +186,6 @@ qq/[{"id":"1","name":"\x{b7}R\x{c4}R\x{b5}\x{b7}"}]\n/
 
             ngx.say(ljson.encode(res))
         }
-    }
---- request
-GET /t
 --- response_body eval
 qq/[{"id":"1","name":"\x{90}\x{db}\x{fb}\x{90}\x{bd}z"}]\n/
 --- no_error_log
