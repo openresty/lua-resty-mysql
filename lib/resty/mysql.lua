@@ -19,7 +19,6 @@ local rshift = bit.rshift
 local tohex = bit.tohex
 local sha1 = ngx.sha1_bin
 local concat = table.concat
-local unpack = unpack
 local setmetatable = setmetatable
 local error = error
 local tonumber = tonumber
