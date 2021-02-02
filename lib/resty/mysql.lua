@@ -67,6 +67,7 @@ local DEFAULT_CLIENT_FLAGS = 0x3f7cf
 local CLIENT_SSL = 0x00000800
 local CLIENT_PLUGIN_AUTH = 0x00080000
 local CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA = 0x00200000
+local DEFAULT_AUTH_PLUGIN = "mysql_native_password"
 
 local SERVER_MORE_RESULTS_EXISTS = 8
 
@@ -724,11 +725,17 @@ local function _read_hand_shake_packet(self)
 
     pos = pos + 13
 
-    local plugin, _ = _from_cstring(packet, pos)
-    if not plugin then
-        -- EOF if version (>= 5.5.7 and < 5.5.10) or (>= 5.6.0 and < 5.6.2)
-        -- \NUL otherwise
-        plugin = sub(packet, pos)
+    local plugin, _
+    if band(self.capabilities, CLIENT_PLUGIN_AUTH) > 0 then
+        plugin, _ = _from_cstring(packet, pos)
+        if not plugin then
+            -- EOF if version (>= 5.5.7 and < 5.5.10) or (>= 5.6.0 and < 5.6.2)
+            -- \NUL otherwise
+            plugin = sub(packet, pos)
+        end
+
+    else
+        plugin = DEFAULT_AUTH_PLUGIN
     end
 
     return scramble .. scramble_part2, plugin
