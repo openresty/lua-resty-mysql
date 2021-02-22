@@ -17,10 +17,14 @@ addons:
     - axel
     - cpanminus
 
+before_cache:
+  - docker save -o docker_images/images.tar $(docker images -a -q)
+
 cache:
   apt: true
   directories:
   - download-cache
+  - docker_images
 
 env:
   global:
@@ -64,6 +68,7 @@ install:
   - git clone https://github.com/spacewander/lua-resty-rsa.git ../lua-resty-rsa
 
 before_script:
+  - docker load -i docker_images/images.tar || true
   - sudo service mysql stop
   - ./.travis/initializedb.sh
   - cd luajit2/
