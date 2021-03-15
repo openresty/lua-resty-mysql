@@ -926,7 +926,11 @@ end
 
 local function _auth(self, auth_data, plugin)
     local password = self.password
-
+ 
+    if plugin == "" then
+        return _to_cstring(password)
+    end
+ 
     if plugin == "caching_sha2_password" then
         local auth_resp, err = _compute_sha256_token(password, auth_data)
         if err then
