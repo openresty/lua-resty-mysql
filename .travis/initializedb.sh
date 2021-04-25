@@ -81,7 +81,7 @@ sudo docker logs mysqld
 
 if [ ! -d download-cache ]; then mkdir download-cache; fi
 if [ ! -f download-cache/world.sql.gz ] && [ -s download-cache/world.sql.gz ]; then
-    wget -O download-cache/world.sql.gz https://downloads.mysql.com/docs/world.sql.gz;
+    curl -SsLo download-cache/world.sql.gz https://downloads.mysql.com/docs/world.sql.gz
 fi
 sudo docker cp download-cache/world.sql.gz mysqld:/tmp/world.sql.gz
 sudo docker exec mysqld /bin/sh -c "zcat /tmp/world.sql.gz | mysql -uroot"
