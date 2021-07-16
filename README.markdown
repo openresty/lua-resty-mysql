@@ -99,6 +99,7 @@ Synopsis
 
                 if not ok then
                     ngx.say("failed to connect: ", err, ": ", errcode, " ", sqlstate)
+                    db:close()
                     return
                 end
 
@@ -108,6 +109,7 @@ Synopsis
                     db:query("drop table if exists cats")
                 if not res then
                     ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                    db:close()
                     return
                 end
 
@@ -117,6 +119,7 @@ Synopsis
                              .. "name varchar(5))")
                 if not res then
                     ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                    db:close()
                     return
                 end
 
@@ -127,6 +130,7 @@ Synopsis
                              .. "values (\'Bob\'),(\'\'),(null)")
                 if not res then
                     ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                    db:close()
                     return
                 end
 
@@ -139,6 +143,7 @@ Synopsis
                     db:query("select * from cats order by id asc", 10)
                 if not res then
                     ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                    db:close()
                     return
                 end
 
@@ -150,6 +155,7 @@ Synopsis
                 local ok, err = db:set_keepalive(10000, 100)
                 if not ok then
                     ngx.say("failed to set keepalive: ", err)
+                    db:close()
                     return
                 end
 
@@ -416,6 +422,7 @@ Below is a trivial example for this:
     res, err, errcode, sqlstate = db:query("select 1; select 2; select 3;")
     if not res then
         ngx.log(ngx.ERR, "bad result #1: ", err, ": ", errcode, ": ", sqlstate, ".")
+        db:close()
         return ngx.exit(500)
     end
 
@@ -426,6 +433,7 @@ Below is a trivial example for this:
         res, err, errcode, sqlstate = db:read_result()
         if not res then
             ngx.log(ngx.ERR, "bad result #", i, ": ", err, ": ", errcode, ": ", sqlstate, ".")
+            db:close()
             return ngx.exit(500)
         end
 
@@ -436,6 +444,7 @@ Below is a trivial example for this:
     local ok, err = db:set_keepalive(10000, 50)
     if not ok then
         ngx.log(ngx.ERR, "failed to set keepalive: ", err)
+        db:close()
         ngx.exit(500)
     end
 ```
