@@ -9,7 +9,6 @@ language: c
 
 compiler:
   - gcc
-  - clang
 
 addons:
   apt:
@@ -40,10 +39,8 @@ env:
     - OPENSSL_PREFIX=/opt/ssl
     - OPENSSL_LIB=$OPENSSL_PREFIX/lib
     - OPENSSL_INC=$OPENSSL_PREFIX/include
-    - OPENSSL_VER=1.1.1f
+    - OPENSSL_VER=1.1.1k
   jobs:
-    - NGINX_VERSION=1.19.9 DB_VERSION=mysql:5.5
-    - NGINX_VERSION=1.19.9 DB_VERSION=mysql:5.6
     - NGINX_VERSION=1.19.9 DB_VERSION=mysql:5.7
     - NGINX_VERSION=1.19.9 DB_VERSION=mysql:8.0
     - NGINX_VERSION=1.19.9 DB_VERSION=mariadb:5.5
