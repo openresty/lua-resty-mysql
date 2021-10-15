@@ -1,4 +1,4 @@
-dist: trusty
+dist: bionic
 
 os: linux
 
@@ -84,5 +84,5 @@ script:
   - cd lua-cjson && (LUA_INCLUDE_DIR=$LUAJIT_INC make && sudo PATH=$PATH make install) || (cat build.log && exit 1) && cd ..
   - export PATH=$PWD/work/nginx/sbin:$PWD/nginx-devel-utils:$PATH
   - ngx-build $NGINX_VERSION --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-cc-opt="-I$OPENSSL_INC" --with-ld-opt="-L$OPENSSL_LIB -Wl,-rpath,$OPENSSL_LIB" --with-stream --with-stream_ssl_module --with-stream_ssl_preread_module --add-module=../lua-nginx-module --add-module=../stream-lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
-  - TEST_SUBSYSTEM=http prove -r t
-  - TEST_SUBSYSTEM=stream prove -r t
+  - TEST_SUBSYSTEM=http prove -I. -r t
+  - TEST_SUBSYSTEM=stream prove -I. -r t
