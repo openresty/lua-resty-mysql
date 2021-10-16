@@ -51,6 +51,7 @@ if [ "$(sudo docker ps -a --filter "name=^/$container_name$" --format '{{.Names}
     sudo docker rm "$container_name"
 fi
 
+sudo mkdir -p /var/run/mysqld
 sudo chmod -R 777 /var/run/mysqld
 sudo docker pull "${DB_VERSION}"
 sudo docker run \
