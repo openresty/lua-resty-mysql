@@ -1097,7 +1097,7 @@ local function _handle_auth_result(self, old_auth_data, plugin)
 end
 
 
-function _M.new(self)
+function _M.new()
     local sock, err = tcp()
     if not sock then
         return nil, err
