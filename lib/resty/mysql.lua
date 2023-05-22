@@ -371,6 +371,10 @@ end
 local function _send_packet(self, req, size)
     local sock = self.sock
 
+    if self.packet_no == nil then
+        self.packet_no = 0
+    end
+
     self.packet_no = self.packet_no + 1
 
     -- print("packet no: ", self.packet_no)

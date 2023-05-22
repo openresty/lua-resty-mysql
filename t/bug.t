@@ -77,3 +77,18 @@ __DATA__
 Rows matched: 1  Changed: 1  Warnings: 0
 --- no_error_log
 [error]
+
+
+
+=== TEST 2: ensure packet_no is not nil before proceeding (gitub #141)
+--- server_config
+        content_by_lua_block {
+            local mysql = require "resty.mysql"
+
+            local ok, err = mysql:close()
+            ngx.say("mysql connection closed")
+        }
+--- response_body_like
+mysql connection closed
+--- no_error_log
+[error]
