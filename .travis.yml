@@ -16,6 +16,12 @@ addons:
     packages:
     - axel
     - cpanminus
+    - libtest-base-perl
+    - libtext-diff-perl
+    - liburi-perl
+    - libwww-perl
+    - libtest-longstring-perl
+    - liblist-moreutils-perl
     - curl
 
 before_cache:
