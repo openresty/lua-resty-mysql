@@ -17,8 +17,19 @@ compiler:
 addons:
   apt:
     packages:
-    - axel
-    - curl
+      - ack
+      - axel
+      - cpanminus
+      - libtest-base-perl
+      - libtext-diff-perl
+      - liburi-perl
+      - libwww-perl
+      - libtest-longstring-perl
+      - liblist-moreutils-perl
+      - libgd-dev
+      - time
+      - cmake
+      - curl
 
 before_cache:
   - docker save -o docker_images/images.tar $(docker images -a -q)
