@@ -1,5 +1,6 @@
 -- Copyright (C) Yichun Zhang (agentzh)
 
+local json = require 'cjson'
 
 local bit = require "bit"
 local resty_sha256 = require "resty.sha256"
@@ -43,6 +44,15 @@ end
 local ok, new_tab = pcall(require, "table.new")
 if not ok then
     new_tab = function (narr, nrec) return {} end
+end
+
+local function tojson(value)
+    if not value then
+        return
+    end 
+    local result = nil 
+    pcall(function (data) result = json.decode(data) end, value)    
+    return result
 end
 
 
@@ -151,7 +161,7 @@ converters[0x00] = tonumber  -- decimal
 converters[0x09] = tonumber  -- int24
 converters[0x0d] = tonumber  -- year
 converters[0xf6] = tonumber  -- newdecimal
-
+converters[0xf5] = tojson    -- tojson
 
 local function _get_byte2(data, i)
     local a, b = strbyte(data, i, i + 1)
