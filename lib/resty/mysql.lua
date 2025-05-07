@@ -1391,6 +1391,12 @@ local function read_result(self, est_nrows)
             break
         end
 
+        if typ == RESP_ERR then
+            self.state = STATE_CONNECTED
+            local errno, msg, sqlstate = _parse_err_packet(packet)
+            return nil, msg, errno, sqlstate
+        end
+
         local row = _parse_row_data_packet(packet, cols, compact)
         i = i + 1
         rows[i] = row
