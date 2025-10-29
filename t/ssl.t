@@ -174,8 +174,8 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
                 return
             end
         ';
---- response_body
-failed to connect: failed to do ssl handshake: 18: self signed certificate: nil nil
---- error_log
-lua ssl certificate verify error: (18: self signed certificate)
+--- response_body eval
+qr/failed to connect: failed to do ssl handshake: 18: self[- ]signed certificate: nil nil/
+--- error_log eval
+qr/lua ssl certificate verify error: \(18: self[- ]signed certificate\)/
 --- timeout: 5
