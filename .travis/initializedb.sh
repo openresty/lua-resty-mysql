@@ -84,7 +84,7 @@ sudo docker cp $path/t/data/world.sql.gz mysqld:/tmp/world.sql.gz
 sudo docker exec mysqld /bin/sh -c "zcat /tmp/world.sql.gz | mysql -uroot"
 
 mysql -uroot -e 'create database ngx_test;'
-mysql -uroot -e 'alter database ngx_test character set utf8mb4 collate utf8mb4_unicode_ci;
+mysql -uroot -e 'alter database ngx_test character set utf8mb4 collate utf8mb4_unicode_ci;'
 mysql -uroot -e 'create user "ngx_test"@"%" identified by "ngx_test";'
 mysql -uroot -e 'grant all on ngx_test.* to "ngx_test"@"%";'
 
