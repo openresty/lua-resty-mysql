@@ -1,24 +1,10 @@
 # vim:set ft= ts=4 sw=4 et:
 
-use Test::Nginx::Socket::Lua;
-use Cwd qw(cwd);
+use t::Test;
 
 repeat_each(2);
 
 plan tests => repeat_each() * (3 * blocks());
-
-my $pwd = cwd();
-
-our $HttpConfig = qq{
-    resolver \$TEST_NGINX_RESOLVER;
-    lua_package_path "$pwd/lib/?.lua;$pwd/t/lib/?.lua;;";
-    lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
-};
-
-$ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
-$ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
-$ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
-$ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
 #log_level 'warn';
 
@@ -31,9 +17,7 @@ run_tests();
 __DATA__
 
 === TEST 1: send query w/o result set
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -77,11 +61,8 @@ __DATA__
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body_like chop
-^connected to mysql \d\.\S+\.
+^connected to mysql \d\.[^\s\x00]+\.
 sent 30 bytes\.
 result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]\}$
 --- no_error_log
@@ -91,10 +72,8 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
 
 
 === TEST 2: send query w/o result set (verify)
---- http_config eval: $::HttpConfig
---- config
+--- server_config
     lua_ssl_trusted_certificate ../../data/test.crt;  # assuming used by the MySQL server
-    location /t {
         content_by_lua '
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -139,11 +118,8 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body_like chop
-^connected to mysql \d\.\S+\.
+^connected to mysql \d\.[^\s\x00]+\.
 sent 30 bytes\.
 result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]\}$
 --- no_error_log
@@ -153,9 +129,7 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
 
 
 === TEST 3: send query w/o result set (verify, failed)
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local mysql = require "resty.mysql"
             local db = mysql:new()
@@ -200,11 +174,8 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
                 return
             end
         ';
-    }
---- request
-GET /t
---- response_body
-failed to connect: failed to do ssl handshake: 18: self signed certificate: nil nil
---- error_log
-lua ssl certificate verify error: (18: self signed certificate)
+--- response_body eval
+qr/failed to connect: failed to do ssl handshake: 18: self[- ]signed certificate: nil nil/
+--- error_log eval
+qr/lua ssl certificate verify error: \(18: self[- ]signed certificate\)/
 --- timeout: 5

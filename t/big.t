@@ -7,26 +7,12 @@ BEGIN {
     }
 }
 
-use Test::Nginx::Socket::Lua @skip;
-use Cwd qw(cwd);
+use t::Test @skip;
 
 repeat_each(50);
 #repeat_each(10);
 
 plan tests => repeat_each() * (3 * blocks());
-
-my $pwd = cwd();
-
-our $HttpConfig = qq{
-    resolver \$TEST_NGINX_RESOLVER;
-    lua_package_path "$pwd/lib/?.lua;$pwd/t/lib/?.lua;;";
-    lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
-};
-
-$ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
-$ENV{TEST_NGINX_MYSQL_PORT} ||= 3306;
-$ENV{TEST_NGINX_MYSQL_HOST} ||= '127.0.0.1';
-$ENV{TEST_NGINX_MYSQL_PATH} ||= '/var/run/mysql/mysql.sock';
 
 log_level 'warn';
 
@@ -39,9 +25,7 @@ run_tests();
 __DATA__
 
 === TEST 1: big field value exceeding 256
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -113,9 +97,6 @@ __DATA__
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body eval
 'connected to mysql.
 table cats dropped.
@@ -131,9 +112,7 @@ result: [{"id":"1","name":"' . ('B' x 1024)
 
 
 === TEST 2: big field value exceeding max packet size
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -208,9 +187,6 @@ result: [{"id":"1","name":"' . ('B' x 1024)
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body eval
 'connected to mysql.
 table cats dropped.
@@ -224,9 +200,7 @@ bad result: packet size too big: 1029: nil: nil.
 
 
 === TEST 3: big field value exceeding 256 (first field in rows)
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -298,9 +272,6 @@ bad result: packet size too big: 1029: nil: nil.
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body eval
 'connected to mysql.
 table cats dropped.
@@ -316,9 +287,7 @@ result: [{"name":"' . ('B' x 1024)
 
 
 === TEST 4: big field value exceeding 65536 (first field in rows)
---- http_config eval: $::HttpConfig
---- config
-    location /t {
+--- server_config
         content_by_lua '
             local ljson = require "ljson"
 
@@ -349,7 +318,7 @@ result: [{"name":"' . ('B' x 1024)
 
             ngx.say("table cats dropped.")
 
-            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(65540))")
+            res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name text(65540))")
             if not res then
                 ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
                 return
@@ -390,9 +359,6 @@ result: [{"name":"' . ('B' x 1024)
                 return
             end
         ';
-    }
---- request
-GET /t
 --- response_body eval
 'connected to mysql.
 table cats dropped.

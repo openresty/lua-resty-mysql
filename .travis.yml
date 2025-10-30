@@ -1,67 +1,102 @@
-sudo: required
-dist: trusty
+dist: focal
+
+branches:
+  only:
+    - "master"
 
 os: linux
+
+services:
+  - docker
 
 language: c
 
 compiler:
   - gcc
-  - clang
 
 addons:
   apt:
     packages:
-    - mysql-server-5.6
-    - mysql-client-core-5.6
-    - mysql-client-5.6
-    - axel 
-    - cpanminus 
-    - libluajit-5.1-dev 
+      - ack
+      - axel
+      - cpanminus
+      - libtest-base-perl
+      - libtext-diff-perl
+      - liburi-perl
+      - libwww-perl
+      - libtest-longstring-perl
+      - liblist-moreutils-perl
+      - libgd-dev
+      - time
+      - cmake
+      - curl
+
+before_cache:
+  - docker save -o docker_images/images.tar $(docker images -a -q)
 
 cache:
   apt: true
   directories:
   - download-cache
+  - docker_images
 
 env:
   global:
     - JOBS=3
     - NGX_BUILD_JOBS=$JOBS
-    - LUAJIT_LIB=/usr/lib64/libluajit-5.1.so
-    - LUAJIT_INC=/usr/include/luajit-2.0
-    - LUA_INCLUDE_DIR=/usr/include/luajit-2.0
-    - LUA_CMODULE_DIR=/lib
+    - LUAJIT_PREFIX=/opt/luajit21
+    - LUAJIT_LIB=$LUAJIT_PREFIX/lib
+    - LUAJIT_INC=$LUAJIT_PREFIX/include/luajit-2.1
+    - LD_LIBRARY_PATH=$LUAJIT_LIB:$LD_LIBRARY_PATH
     - TEST_NGINX_MYSQL_PATH=/var/run/mysqld/mysqld.sock
     - TEST_NGINX_SLEEP=0.006
-  matrix:
-    - NGINX_VERSION=1.9.15
+    - OPENSSL_PREFIX=/opt/ssl
+    - OPENSSL_LIB=$OPENSSL_PREFIX/lib
+    - OPENSSL_INC=$OPENSSL_PREFIX/include
+    - OPENSSL_VER=1.1.1w
+  jobs:
+    - NGINX_VERSION=1.27.1 DB_VERSION=mysql:5.7
+    - NGINX_VERSION=1.27.1 DB_VERSION=mysql:8.0
+    - NGINX_VERSION=1.27.1 DB_VERSION=mariadb:5.5
+    - NGINX_VERSION=1.27.1 DB_VERSION=mariadb:10.0
+    - NGINX_VERSION=1.27.1 DB_VERSION=mariadb:10.1
+    - NGINX_VERSION=1.27.1 DB_VERSION=mariadb:10.2
+    - NGINX_VERSION=1.27.1 DB_VERSION=mariadb:10.3
 
 install:
+  - if [ ! -d download-cache ]; then mkdir download-cache; fi
+  - if [ ! -f download-cache/openssl-$OPENSSL_VER.tar.gz ]; then wget -O download-cache/openssl-$OPENSSL_VER.tar.gz https://www.openssl.org/source/openssl-$OPENSSL_VER.tar.gz; fi
   - git clone https://github.com/openresty/test-nginx.git
   - git clone https://github.com/openresty/openresty.git ../openresty
   - git clone https://github.com/openresty/nginx-devel-utils.git
   - git clone https://github.com/openresty/lua-cjson.git
   - git clone https://github.com/openresty/lua-nginx-module.git ../lua-nginx-module
+  - git clone https://github.com/openresty/stream-lua-nginx-module.git ../stream-lua-nginx-module
+  - git clone https://github.com/openresty/lua-resty-core.git ../lua-resty-core
+  - git clone https://github.com/openresty/lua-resty-lrucache.git ../lua-resty-lrucache
+  - git clone https://github.com/openresty/lua-resty-string.git ../lua-resty-string
   - git clone https://github.com/openresty/no-pool-nginx.git ../no-pool-nginx
+  - git clone -b v2.1-agentzh https://github.com/openresty/luajit2.git luajit2
+  - git clone https://github.com/spacewander/lua-resty-rsa.git ../lua-resty-rsa
 
 before_script:
-  - mysql -uroot -e 'create database ngx_test; grant all on ngx_test.* to "ngx_test"@"%" identified by "ngx_test";'
-  - if [ ! -d download-cache ]; then mkdir download-cache; fi
-  - if [ ! -f download-cache/world.sql.gz ]; then wget -O download-cache/world.sql.gz http://downloads.mysql.com/docs/world.sql.gz; fi
-  - zcat download-cache/world.sql.gz | mysql -uroot
-  - mysql -uroot -e 'grant all on world.* to "ngx_test"@"%"; flush privileges;'
+  - docker load -i docker_images/images.tar || true
+  - sudo systemctl stop mysql
+  - ./.travis/initializedb.sh
+  - cd luajit2/
+  - make -j$JOBS CCDEBUG=-g Q= PREFIX=$LUAJIT_PREFIX CC=$CC XCFLAGS='-DLUA_USE_APICHECK -DLUA_USE_ASSERT -msse4.2' > build.log 2>&1 || (cat build.log && exit 1)
+  - sudo make install PREFIX=$LUAJIT_PREFIX > build.log 2>&1 || (cat build.log && exit 1)
+  - cd ..
 
 script:
-  - sudo cp t/data/test.crt t/data/test.key /etc/mysql
-  - echo '[mysqld]' > ssl.cnf
-  - echo 'ssl-ca=/etc/mysql/test.crt' >> ssl.cnf
-  - echo 'ssl-cert=/etc/mysql/test.crt' >> ssl.cnf
-  - echo 'ssl-key=/etc/mysql/test.key' >> ssl.cnf
-  - sudo cp ssl.cnf /etc/mysql/conf.d
-  - sudo service mysql restart
-  - cd test-nginx && (sudo cpanm . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
-  - cd lua-cjson && make && sudo PATH=$PATH make install && cd ..
+  - tar zxf download-cache/openssl-$OPENSSL_VER.tar.gz
+  - cd openssl-$OPENSSL_VER/
+  - ./config shared --prefix=$OPENSSL_PREFIX -DPURIFY > build.log 2>&1 || (cat build.log && exit 1)
+  - make -j$JOBS > build.log 2>&1 || (cat build.log && exit 1)
+  - sudo make PATH=$PATH install_sw > build.log 2>&1 || (cat build.log && exit 1) && cd ..
+  - (cpanm --notest ./test-nginx > build.log 2>&1 || (cat build.log && exit 1))
+  - cd lua-cjson && (LUA_INCLUDE_DIR=$LUAJIT_INC make && sudo PATH=$PATH make install) || (cat build.log && exit 1) && cd ..
   - export PATH=$PWD/work/nginx/sbin:$PWD/nginx-devel-utils:$PATH
-  - ngx-build $NGINX_VERSION --with-ipv6 --with-http_realip_module --with-http_ssl_module --add-module=../lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
-  - prove -r t
+  - ngx-build $NGINX_VERSION --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-cc-opt="-I$OPENSSL_INC" --with-ld-opt="-L$OPENSSL_LIB -Wl,-rpath,$OPENSSL_LIB" --with-stream --with-stream_ssl_module --with-stream_ssl_preread_module --add-module=../lua-nginx-module --add-module=../stream-lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
+  - TEST_SUBSYSTEM=http prove -I. -I./test-nginx/inc -I./test-nginx/lib -r t
+  - TEST_SUBSYSTEM=stream prove -I. -I./test-nginx/inc -I./test-nginx/lib -r t

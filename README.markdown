@@ -27,6 +27,7 @@ Table of Contents
 * [Debugging](#debugging)
 * [Automatic Error Logging](#automatic-error-logging)
 * [Limitations](#limitations)
+* [More Authentication Method Support](#more-authentication-method-support)
 * [Installation](#installation)
 * [Community](#community)
     * [English Mailing List](#english-mailing-list)
@@ -47,14 +48,14 @@ Description
 
 This Lua library is a MySQL client driver for the ngx_lua nginx module:
 
-http://wiki.nginx.org/HttpLuaModule
+https://github.com/openresty/lua-nginx-module
 
 This Lua library takes advantage of ngx_lua's cosocket API, which ensures
 100% nonblocking behavior.
 
 Note that at least [ngx_lua 0.9.11](https://github.com/chaoslawful/lua-nginx-module/tags) or [ngx_openresty 1.7.4.1](http://openresty.org/#Download) is required.
 
-Also, the [bit library](http://bitop.luajit.org/) is also required. If you're using LuaJIT 2.0 with ngx_lua, then the `bit` library is already available by default.
+Also, the [bit library](http://bitop.luajit.org/) is also required. If you're using LuaJIT 2 with ngx_lua, then the `bit` library is already available by default.
 
 Synopsis
 ========
@@ -98,6 +99,7 @@ Synopsis
 
                 if not ok then
                     ngx.say("failed to connect: ", err, ": ", errcode, " ", sqlstate)
+                    db:close()
                     return
                 end
 
@@ -107,6 +109,7 @@ Synopsis
                     db:query("drop table if exists cats")
                 if not res then
                     ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                    db:close()
                     return
                 end
 
@@ -116,6 +119,7 @@ Synopsis
                              .. "name varchar(5))")
                 if not res then
                     ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                    db:close()
                     return
                 end
 
@@ -126,6 +130,7 @@ Synopsis
                              .. "values (\'Bob\'),(\'\'),(null)")
                 if not res then
                     ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                    db:close()
                     return
                 end
 
@@ -138,6 +143,7 @@ Synopsis
                     db:query("select * from cats order by id asc", 10)
                 if not res then
                     ngx.say("bad result: ", err, ": ", errcode, ": ", sqlstate, ".")
+                    db:close()
                     return
                 end
 
@@ -149,6 +155,7 @@ Synopsis
                 local ok, err = db:set_keepalive(10000, 100)
                 if not ok then
                     ngx.say("failed to set keepalive: ", err)
+                    db:close()
                     return
                 end
 
@@ -180,7 +187,7 @@ Creates a MySQL connection object. In case of failures, returns `nil` and a stri
 
 connect
 -------
-`syntax: ok, err = db:connect(options)`
+`syntax: ok, err, errcode, sqlstate = db:connect(options)`
 
 Attempts to connect to the remote MySQL server.
 
@@ -230,6 +237,15 @@ The following values are accepted: `big5`, `dec8`, `cp850`, `hp8`, `koi8r`, `lat
 * `pool`
 
     the name for the MySQL connection pool. if omitted, an ambiguous pool name will be generated automatically with the string template `user:database:host:port` or `user:database:path`. (this option was first introduced in `v0.08`.)
+
+* `pool_size`
+
+    Specifies the size of the connection pool. If omitted and no `backlog` option was provided, no pool will be created. If omitted but `backlog` was provided, the pool will be created with a default size equal to the value of the [lua_socket_pool_size](https://github.com/openresty/lua-nginx-module#lua_socket_pool_size) directive. The connection pool holds up to `pool_size` alive connections ready to be reused by subsequent calls to [connect](#connect), but note that there is no upper limit to the total number of opened connections outside of the pool. If you need to restrict the total number of opened connections, specify the `backlog` option. When the connection pool would exceed its size limit, the least recently used (kept-alive) connection already in the pool will be closed to make room for the current connection. Note that the cosocket connection pool is per Nginx worker process rather than per Nginx server instance, so the size limit specified here also applies to every single Nginx worker process. Also note that the size of the connection pool cannot be changed once it has been created. Note that at least [ngx_lua 0.10.14](https://github.com/openresty/lua-nginx-module/tags) is required to use this options.
+
+* `backlog`
+
+    If specified, this module will limit the total number of opened connections for this pool. No more connections than `pool_size` can be opened for this pool at any time. If the connection pool is full, subsequent connect operations will be queued into a queue equal to this option's value (the "backlog" queue). If the number of queued connect operations is equal to `backlog`, subsequent connect operations will fail and return nil plus the error string `"too many waiting connect operations"`. The queued connect operations will be resumed once the number of connections in the pool is less than `pool_size`. The queued connect operation will abort once they have been queued for more than `connect_timeout`, controlled by [set_timeout](#set_timeout), and will return nil plus the error string "timeout". Note that at least [ngx_lua 0.10.14](https://github.com/openresty/lua-nginx-module/tags) is required to use this options.
+
 * `compact_arrays`
 
     when this option is set to true, then the [query](#query) and [read_result](#read_result) methods will return the array-of-arrays structure for the resultset, rather than the default array-of-hashes structure.
@@ -302,7 +318,7 @@ Reads in one result returned from the MySQL server.
 
 It returns a Lua table (`res`) describing the MySQL `OK packet` or `result set packet` for the query result.
 
-For queries corresponding to a result set, it returns an array holding all the rows. Each row holds key-value apirs for each data fields. For instance,
+For queries corresponding to a result set, it returns an array holding all the rows. Each row holds key-value pairs for each data fields. For instance,
 
 ```lua
     {
@@ -368,7 +384,7 @@ SQL Literal Quoting
 ===================
 
 It is always important to quote SQL literals properly to prevent SQL injection attacks. You can use the
-[ngx.quote_sql_str](http://wiki.nginx.org/HttpLuaModule#ngx.quote_sql_str) function provided by ngx_lua to quote values.
+[ngx.quote_sql_str](https://github.com/openresty/lua-nginx-module#ngxquote_sql_str) function provided by ngx_lua to quote values.
 Here is an example:
 
 ```lua
@@ -406,6 +422,7 @@ Below is a trivial example for this:
     res, err, errcode, sqlstate = db:query("select 1; select 2; select 3;")
     if not res then
         ngx.log(ngx.ERR, "bad result #1: ", err, ": ", errcode, ": ", sqlstate, ".")
+        db:close()
         return ngx.exit(500)
     end
 
@@ -416,6 +433,7 @@ Below is a trivial example for this:
         res, err, errcode, sqlstate = db:read_result()
         if not res then
             ngx.log(ngx.ERR, "bad result #", i, ": ", err, ": ", errcode, ": ", sqlstate, ".")
+            db:close()
             return ngx.exit(500)
         end
 
@@ -426,6 +444,7 @@ Below is a trivial example for this:
     local ok, err = db:set_keepalive(10000, 50)
     if not ok then
         ngx.log(ngx.ERR, "failed to set keepalive: ", err)
+        db:close()
         ngx.exit(500)
     end
 ```
@@ -457,9 +476,9 @@ It is usually convenient to use the [lua-cjson](http://www.kyne.com.au/~mark/sof
 Automatic Error Logging
 =======================
 
-By default the underlying [ngx_lua](http://wiki.nginx.org/HttpLuaModule) module
+By default the underlying [ngx_lua](https://github.com/openresty/lua-nginx-module) module
 does error logging when socket errors happen. If you are already doing proper error
-handling in your own Lua code, then you are recommended to disable this automatic error logging by turning off [ngx_lua](http://wiki.nginx.org/HttpLuaModule)'s [lua_socket_log_errors](http://wiki.nginx.org/HttpLuaModule#lua_socket_log_errors) directive, that is,
+handling in your own Lua code, then you are recommended to disable this automatic error logging by turning off [ngx_lua](https://github.com/openresty/lua-nginx-module)'s [lua_socket_log_errors](https://github.com/openresty/lua-nginx-module#lua_socket_log_errors) directive, that is,
 
 ```nginx
     lua_socket_log_errors off;
@@ -475,11 +494,20 @@ header_filter_by_lua* where the ngx_lua cosocket API is not available.
 * The `resty.mysql` object instance cannot be stored in a Lua variable at the Lua module level,
 because it will then be shared by all the concurrent requests handled by the same nginx
  worker process (see
-http://wiki.nginx.org/HttpLuaModule#Data_Sharing_within_an_Nginx_Worker ) and
+https://github.com/openresty/lua-nginx-module#data-sharing-within-an-nginx-worker ) and
 result in bad race conditions when concurrent requests are trying to use the same `resty.mysql` instance.
 You should always initiate `resty.mysql` objects in function local
 variables or in the `ngx.ctx` table. These places all have their own data copies for
 each request.
+
+[Back to TOC](#table-of-contents)
+
+More Authentication Method Support
+=========
+
+By default, Of all authentication method, only [Old Password Authentication(mysql_old_password)](https://dev.mysql.com/doc/internals/en/old-password-authentication.html) and [Secure Password Authentication(mysql_native_password)](https://dev.mysql.com/doc/internals/en/secure-password-authentication.html) are suppored. If the server requires [sha256_password](https://dev.mysql.com/doc/internals/en/sha256.html) or cache_sha2_password, an error like `auth plugin caching_sha2_password or sha256_password are not supported because resty.rsa is not installed` may be returned.
+
+Need [lua-resty-rsa](https://github.com/spacewander/lua-resty-rsa) when using the `sha256_password` and `cache_sha2_password`.
 
 [Back to TOC](#table-of-contents)
 
@@ -538,7 +566,7 @@ Bugs and Patches
 Please submit bug reports, wishlists, or patches by
 
 1. creating a ticket on the [GitHub Issue Tracker](http://github.com/agentzh/lua-resty-mysql/issues),
-1. or posting to the [OpenResty community](http://wiki.nginx.org/HttpLuaModule#Community).
+1. or posting to the [OpenResty community](https://github.com/openresty/lua-nginx-module#community).
 
 [Back to TOC](#table-of-contents)
 
@@ -547,7 +575,6 @@ TODO
 
 * improve the MySQL connection pool support.
 * implement the MySQL binary row data packets.
-* implement MySQL's old pre-4.0 authentication method.
 * implement MySQL server prepare and execute packets.
 * implement the data compression support in the protocol.
 
@@ -565,7 +592,7 @@ Copyright and License
 
 This module is licensed under the BSD license.
 
-Copyright (C) 2012-2017, by Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, OpenResty Inc.
+Copyright (C) 2012-2018, by Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, OpenResty Inc.
 
 All rights reserved.
 
@@ -581,11 +608,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 See Also
 ========
-* the ngx_lua module: http://wiki.nginx.org/HttpLuaModule
+* the ngx_lua module: https://github.com/openresty/lua-nginx-module
 * the MySQL wired protocol specification: http://forge.mysql.com/wiki/MySQL_Internals_ClientServer_Protocol
 * the [lua-resty-memcached](https://github.com/agentzh/lua-resty-memcached) library
 * the [lua-resty-redis](https://github.com/agentzh/lua-resty-redis) library
-* the ngx_drizzle module: http://wiki.nginx.org/HttpDrizzleModule
+* the ngx_drizzle module: https://github.com/openresty/drizzle-nginx-module
 
 [Back to TOC](#table-of-contents)
 
