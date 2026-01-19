@@ -50,20 +50,24 @@ env:
     - LD_LIBRARY_PATH=$LUAJIT_LIB:$LD_LIBRARY_PATH
     - TEST_NGINX_MYSQL_PATH=/var/run/mysqld/mysqld.sock
     - TEST_NGINX_SLEEP=0.006
-    - OPENSSL_PREFIX=/opt/ssl
+    - OPENSSL_PREFIX=/usr/local/openresty/openssl3
     - OPENSSL_LIB=$OPENSSL_PREFIX/lib
     - OPENSSL_INC=$OPENSSL_PREFIX/include
     - OPENSSL_VER=1.1.1w
   jobs:
-    - NGINX_VERSION=1.29.2 DB_VERSION=mysql:5.7
-    - NGINX_VERSION=1.29.2 DB_VERSION=mysql:8.0
-    - NGINX_VERSION=1.29.2 DB_VERSION=mariadb:5.5
-    - NGINX_VERSION=1.29.2 DB_VERSION=mariadb:10.0
-    - NGINX_VERSION=1.29.2 DB_VERSION=mariadb:10.1
-    - NGINX_VERSION=1.29.2 DB_VERSION=mariadb:10.2
-    - NGINX_VERSION=1.29.2 DB_VERSION=mariadb:10.3
+    - NGINX_VERSION=1.29.4 DB_VERSION=mysql:5.7
+    - NGINX_VERSION=1.29.4 DB_VERSION=mysql:8.0
+    - NGINX_VERSION=1.29.4 DB_VERSION=mariadb:5.5
+    - NGINX_VERSION=1.29.4 DB_VERSION=mariadb:10.0
+    - NGINX_VERSION=1.29.4 DB_VERSION=mariadb:10.1
+    - NGINX_VERSION=1.29.4 DB_VERSION=mariadb:10.2
+    - NGINX_VERSION=1.29.4 DB_VERSION=mariadb:10.3
 
 install:
+  - wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
+  - echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
+  - sudo apt-get update
+  - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends openresty-pcre2 openresty-openssl3 openresty-pcre2-dev openresty-openssl3-dev
   - if [ ! -d download-cache ]; then mkdir download-cache; fi
   - if [ ! -f download-cache/openssl-$OPENSSL_VER.tar.gz ]; then wget -O download-cache/openssl-$OPENSSL_VER.tar.gz https://www.openssl.org/source/openssl-$OPENSSL_VER.tar.gz; fi
   - git clone https://github.com/openresty/test-nginx.git
@@ -89,11 +93,6 @@ before_script:
   - cd ..
 
 script:
-  - tar zxf download-cache/openssl-$OPENSSL_VER.tar.gz
-  - cd openssl-$OPENSSL_VER/
-  - ./config shared --prefix=$OPENSSL_PREFIX -DPURIFY > build.log 2>&1 || (cat build.log && exit 1)
-  - make -j$JOBS > build.log 2>&1 || (cat build.log && exit 1)
-  - sudo make PATH=$PATH install_sw > build.log 2>&1 || (cat build.log && exit 1) && cd ..
   - (cpanm --notest ./test-nginx > build.log 2>&1 || (cat build.log && exit 1))
   - cd lua-cjson && (LUA_INCLUDE_DIR=$LUAJIT_INC make && sudo PATH=$PATH make install) || (cat build.log && exit 1) && cd ..
   - export PATH=$PWD/work/nginx/sbin:$PWD/nginx-devel-utils:$PATH
