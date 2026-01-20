@@ -1403,6 +1403,8 @@ local function read_result(self, est_nrows)
     end
 
     self.state = STATE_CONNECTED
+    
+    setmetatable(rows,cols)
 
     return rows
 end
