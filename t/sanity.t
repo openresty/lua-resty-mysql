@@ -100,7 +100,7 @@ failed to connect: Access denied for user 'user_not_found'@'[^\s]+' \(using pass
             db:close()
         ';
 --- response_body_like
-connected to mysql \d\.[^\s\x00]+
+connected to mysql \d+\.[^\s\x00]+
 --- no_error_log
 [error]
 
@@ -150,7 +150,7 @@ connected to mysql \d\.[^\s\x00]+
             end
         ';
 --- response_body_like chop
-^connected to mysql \d\.[^\s\x00]+\.
+^connected to mysql \d+\.[^\s\x00]+\.
 sent 30 bytes\.
 result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]\}$
 --- no_error_log
@@ -203,7 +203,7 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
             end
         ';
 --- response_body_like chop
-^connected to mysql \d\.[^\s\x00]+\.
+^connected to mysql \d+\.[^\s\x00]+\.
 sent 12 bytes\.
 bad result: You have an error in your SQL syntax; check the manual that corresponds to your (?:MySQL|MariaDB) server version for the right syntax to use near 'bad SQL' at line 1: 1064: 42000\.$
 --- no_error_log
@@ -804,7 +804,7 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
             end
         ';
 --- response_body_like chop
-^connected to mysql \d\.[^\s\x00]+\.
+^connected to mysql \d+\.[^\s\x00]+\.
 sent 30 bytes\.
 result: (?:\{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0}|{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]\})$
 --- no_error_log
@@ -1554,7 +1554,7 @@ success
             db:close()
         ';
 --- response_body_like
-connected to mysql \d\.[^\s\x00]+
+connected to mysql \d+\.[^\s\x00]+
 --- no_error_log
 [error]
 

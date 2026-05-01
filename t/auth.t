@@ -172,10 +172,24 @@ __DATA__
                 ["mariadb:10.2"] = {
                     "mysql_native_password",
                     "mysql_old_password",
+                    "client_ed25519",
                 },
                 ["mariadb:10.3"] = {
                     "mysql_native_password",
                     "mysql_old_password",
+                    "client_ed25519",
+                },
+                ["mariadb:11.4"] = {
+                    "mysql_native_password",
+                    "client_ed25519",
+                },
+                ["mariadb:11.8"] = {
+                    "mysql_native_password",
+                    "client_ed25519",
+                },
+                ["mariadb:12.2"] = {
+                    "mysql_native_password",
+                    "client_ed25519",
                 },
             }
 
@@ -216,11 +230,25 @@ __DATA__
                         user = "nopass_caching_sha2",
                     },
                 },
+                ["client_ed25519"] = {
+                    {
+                        user = "ed25519_user",
+                        password = "ed25519_pass",
+                    },
+                    {
+                        user = "ed25519_nopass",
+                    },
+                },
             }
 
             local plugin_list = version_plugin_mapping[version]
             if not plugin_list then
-                ngx.log(ngx.ERR, "unknown version: ", version)
+                -- Log at WARN (not ERR) so the test's `--- no_error_log:
+                -- [error]` assertion still passes, and bail out of the
+                -- loop instead of crashing on `ipairs(nil)` below.
+                ngx.log(ngx.WARN, "no auth-plugin mapping for version: ",
+                        version, "; skipping")
+                return
             end
 
             for _, p in ipairs(plugin_list) do

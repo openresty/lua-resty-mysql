@@ -25,6 +25,7 @@ local tonumber = tonumber
 local to_int = math.floor
 
 local has_rsa, resty_rsa = pcall(require, "resty.rsa")
+local has_ed25519, resty_ed25519 = pcall(require, "resty.mysql.auth_ed25519")
 
 
 if not ngx.config then
@@ -970,6 +971,31 @@ local function _auth(self, auth_data, plugin)
         end
 
         return "\1" -- request public key from server
+    end
+
+    if plugin == "client_ed25519" then
+        -- Unlike mysql_native_password (where an empty password yields an
+        -- empty auth response), an ed25519 user is identified by the public
+        -- key derived from SHA-512(password); the server stores that key
+        -- even when password is empty and still expects a valid signature.
+        -- So we always compute the signature, regardless of password length.
+        if not has_ed25519 then
+            return nil, "auth plugin client_ed25519 is not supported because"
+                        .. " resty.mysql.auth_ed25519 is not available: "
+                        .. tostring(resty_ed25519)
+        end
+
+        -- The auth-switch packet for client_ed25519 carries exactly 32 bytes
+        -- of scramble (no trailing NUL). Defensive truncate in case a future
+        -- server appends one.
+        auth_data = sub(auth_data, 1, 32)
+
+        local sig, err = resty_ed25519.sign(password, auth_data)
+        if not sig then
+            return nil, "failed to compute client_ed25519 signature: " .. err
+        end
+
+        return sig
     end
 
     return nil, "unknown plugin: " .. plugin
