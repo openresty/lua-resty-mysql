@@ -509,6 +509,10 @@ By default, Of all authentication method, only [Old Password Authentication(mysq
 
 Need [lua-resty-rsa](https://github.com/spacewander/lua-resty-rsa) when using the `sha256_password` and `cache_sha2_password`.
 
+For MariaDB's `client_ed25519` authentication plugin (default in many recent MariaDB deployments, available since MariaDB 10.1.22), [`lua-resty-openssl`](https://github.com/fffonion/lua-resty-openssl) is required. No additional system dependency is needed — it reuses the libcrypto OpenResty already links against. Cost is roughly 25 ms per sign, paid once per connection.
+
+Background: the Ed25519 signing primitive in this MariaDB plugin uses `SHA-512(password)` directly as the expanded secret key, skipping the RFC 8032 seed-derivation step. As a result the high-level Ed25519 APIs in OpenSSL/libsodium cannot be used as-is. This driver implements the Edwards-curve point arithmetic on top of OpenSSL's BIGNUM module (`resty.openssl.bn`) — field/group arithmetic goes through libcrypto, while point addition and scalar multiplication are implemented directly so we can feed in the MariaDB-specific expanded secret.
+
 [Back to TOC](#table-of-contents)
 
 Installation
