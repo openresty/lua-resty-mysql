@@ -6,7 +6,7 @@ repeat_each(2);
 
 plan tests => repeat_each() * (3 * blocks());
 
-#log_level 'warn';
+log_level 'warn';
 
 no_long_string();
 no_shuffle();

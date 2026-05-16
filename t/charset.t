@@ -6,7 +6,7 @@ repeat_each(2);
 
 plan tests => repeat_each() * (3 * blocks());
 
-#log_level 'warn';
+log_level 'warn';
 
 #no_long_string();
 no_shuffle();
@@ -23,7 +23,7 @@ __DATA__
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path     = "$TEST_NGINX_MYSQL_PATH",
@@ -72,6 +72,7 @@ __DATA__
 [{"id":"1","name":"愛麗絲"}]
 --- no_error_log
 [error]
+--- timeout: 120
 
 
 
@@ -82,7 +83,7 @@ __DATA__
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path     = "$TEST_NGINX_MYSQL_PATH",
@@ -131,6 +132,7 @@ __DATA__
 qq/[{"id":"1","name":"\x{b7}R\x{c4}R\x{b5}\x{b7}"}]\n/
 --- no_error_log
 [error]
+--- timeout: 120
 
 
 
@@ -141,7 +143,7 @@ qq/[{"id":"1","name":"\x{b7}R\x{c4}R\x{b5}\x{b7}"}]\n/
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path     = "$TEST_NGINX_MYSQL_PATH",
@@ -190,3 +192,4 @@ qq/[{"id":"1","name":"\x{b7}R\x{c4}R\x{b5}\x{b7}"}]\n/
 qq/[{"id":"1","name":"\x{90}\x{db}\x{fb}\x{90}\x{bd}z"}]\n/
 --- no_error_log
 [error]
+--- timeout: 120

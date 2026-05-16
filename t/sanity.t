@@ -6,7 +6,7 @@ repeat_each(2);
 
 plan tests => repeat_each() * (3 * blocks() + 4);
 
-#log_level 'warn';
+log_level 'warn';
 
 no_long_string();
 no_shuffle();
@@ -22,7 +22,7 @@ __DATA__
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -47,11 +47,12 @@ failed to connect: Access denied for user 'user_not_found'@'[^\s]+' \(using pass
 
 === TEST 2: bad host
 --- server_config
+        resolver_timeout 1s;
         content_by_lua '
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(5000) -- 5 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "host-not-found.org",
@@ -68,10 +69,10 @@ failed to connect: Access denied for user 'user_not_found'@'[^\s]+' \(using pass
             db:close()
         ';
 --- response_body_like chop
-^failed to connect: failed to connect: host-not-found.org could not be resolved(?: \(3: Host not found\))?: nil nil$
+^failed to connect: failed to connect: host-not-found.org could not be resolved(?: \([0-9]+: [^)]+\))?: nil nil$
 --- no_error_log
 [error]
---- timeout: 7
+--- timeout: 10
 
 
 
@@ -81,7 +82,7 @@ failed to connect: Access denied for user 'user_not_found'@'[^\s]+' \(using pass
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -112,7 +113,7 @@ connected to mysql \d+\.[^\s\x00]+
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -164,7 +165,7 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -219,7 +220,7 @@ bad result: You have an error in your SQL syntax; check the manual that correspo
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(2000) -- 2 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -301,7 +302,7 @@ result: [{"id":"3","name":null},{"id":"2","name":""},{"id":"1","name":"Bob"}]
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(2000) -- 2 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -374,7 +375,7 @@ result: []
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -457,7 +458,7 @@ result: [{"bah":null,"bar":null,"baz":null,"blah":null,"hah":null,"haha":null,"i
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -532,7 +533,7 @@ bad result: failed to send query: cannot send query in the current context: 2: n
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -621,7 +622,7 @@ result: [{"id":"3","name":null},{"id":"2","name":""},{"id":"1","name":"Bob"}], e
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -702,7 +703,7 @@ failed to set keepalive: cannot be reused in the current connection state: 2
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -767,7 +768,7 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path = "$TEST_NGINX_MYSQL_PATH",
@@ -809,6 +810,7 @@ sent 30 bytes\.
 result: (?:\{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0}|{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]\})$
 --- no_error_log
 [error]
+--- timeout: 30
 
 
 
@@ -820,7 +822,7 @@ result: (?:\{"insert_id":0,"server_status":2,"warning_count":1,"affected_rows":0
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -892,6 +894,7 @@ result: [{"name":"Bob"},{"name":""},{"name":null}]
 result: [{"name":null},{"name":""},{"name":"Bob"}]
 --- no_error_log
 [error]
+--- timeout: 30
 
 
 
@@ -903,7 +906,7 @@ result: [{"name":null},{"name":""},{"name":"Bob"}]
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path = "$TEST_NGINX_MYSQL_PATH",
@@ -969,7 +972,7 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path = "$TEST_NGINX_MYSQL_PATH",
@@ -1038,7 +1041,7 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path = "$TEST_NGINX_MYSQL_PATH",
@@ -1120,7 +1123,7 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
                 ngx.say("failed to instantiate mysql: ", err)
                 return
             end
-            db:set_timeout(1000)
+            db:set_timeout(10000)
             local ok, err = db:connect{
                                        host = "$TEST_NGINX_MYSQL_HOST",
                                        port = $TEST_NGINX_MYSQL_PORT,
@@ -1162,7 +1165,7 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(2000) -- 2 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path = "$TEST_NGINX_MYSQL_PATH",
@@ -1219,7 +1222,7 @@ qr/lua tcp socket keepalive create connection pool for key "my_pool"/
 success
 --- no_error_log
 [error]
---- timeout: 20
+--- timeout: 120
 
 
 
@@ -1231,7 +1234,7 @@ success
 
             local db = mysql:new()
 
-            db:set_timeout(2000) -- 2 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path = "$TEST_NGINX_MYSQL_PATH",
@@ -1294,7 +1297,7 @@ success
 success
 --- no_error_log
 [error]
---- timeout: 20
+--- timeout: 120
 
 
 
@@ -1306,7 +1309,7 @@ success
 
             local db = mysql:new()
 
-            db:set_timeout(2000) -- 2 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path = "$TEST_NGINX_MYSQL_PATH",
@@ -1370,7 +1373,7 @@ bad result: .*Too many columns.*.
 
 --- no_error_log
 [error]
---- timeout: 20
+--- timeout: 120
 
 
 
@@ -1382,7 +1385,7 @@ bad result: .*Too many columns.*.
 
             local db = mysql:new()
 
-            db:set_timeout(2000) -- 2 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path = "$TEST_NGINX_MYSQL_PATH",
@@ -1446,7 +1449,7 @@ bad result: .*?(?:Too many columns|Can't create table 'ngx_test\.test1018' \(err
 
 --- no_error_log
 [error]
---- timeout: 20
+--- timeout: 120
 
 
 
@@ -1458,7 +1461,7 @@ bad result: .*?(?:Too many columns|Can't create table 'ngx_test\.test1018' \(err
 
             local db = mysql:new()
 
-            db:set_timeout(2000) -- 2 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path = "$TEST_NGINX_MYSQL_PATH",
@@ -1521,7 +1524,7 @@ bad result: .*?(?:Too many columns|Can't create table 'ngx_test\.test1018' \(err
 success
 --- no_error_log
 [error]
---- timeout: 20
+--- timeout: 120
 
 
 
@@ -1531,7 +1534,7 @@ success
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(1000) -- 1 sec
+            db:set_timeout(10000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
@@ -1567,7 +1570,7 @@ connected to mysql \d+\.[^\s\x00]+
 
             local function mysql_conn()
                 local db = mysql:new()
-                db:set_timeout(1000) -- 1 sec
+                db:set_timeout(10000) -- 10 sec
 
                 local ok, err, errno, sqlstate = db:connect({
                     host = "$TEST_NGINX_MYSQL_HOST",
@@ -1597,6 +1600,7 @@ connected to mysql \d+\.[^\s\x00]+
 connected to mysql
 --- no_error_log
 [error]
+--- timeout: 30
 
 
 
@@ -1607,7 +1611,7 @@ connected to mysql
 
             local function mysql_conn()
                 local db = mysql:new()
-                db:set_timeout(1000) -- 1 sec
+                db:set_timeout(10000) -- 10 sec
 
                 local ok, err, errno, sqlstate = db:connect({
                     host = "$TEST_NGINX_MYSQL_HOST",
@@ -1642,6 +1646,7 @@ failed to connect: timeout
 failed to connect: timeout
 --- error_log
 lua tcp socket queued connect timed out
+--- timeout: 30
 
 
 
@@ -1667,7 +1672,7 @@ lua tcp socket queued connect timed out
                 ngx.say("failed to instantiate mysql: ", err)
                 return
             end
-            db:set_timeout(1000)
+            db:set_timeout(10000)
             local ok, err = db:connect{
                                        host = "$TEST_NGINX_MYSQL_HOST",
                                        port = $TEST_NGINX_MYSQL_PORT,

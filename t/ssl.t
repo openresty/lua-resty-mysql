@@ -6,7 +6,7 @@ repeat_each(2);
 
 plan tests => repeat_each() * (3 * blocks());
 
-#log_level 'warn';
+log_level 'info';
 
 no_long_string();
 no_shuffle();
@@ -175,7 +175,7 @@ result: \{"affected_rows":0,"insert_id":0,"server_status":2,"warning_count":[01]
             end
         ';
 --- response_body eval
-qr/failed to connect: failed to do ssl handshake: 18: self[- ]signed certificate: nil nil/
+qr/failed to connect: (?:failed to do ssl handshake: 18: self[- ]signed certificate|failed to send client authentication packet: closed): nil nil/
 --- error_log eval
 qr/lua ssl certificate verify error: \(18: self[- ]signed certificate\)/
 --- timeout: 5

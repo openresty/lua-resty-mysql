@@ -9,6 +9,7 @@ plan tests => repeat_each() * (3 * blocks());
 no_long_string();
 #no_diff();
 
+log_level 'warn';
 run_tests();
 
 __DATA__

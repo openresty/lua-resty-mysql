@@ -35,6 +35,7 @@ repeat_each(2);
 
 plan tests => repeat_each() * (3 * blocks());
 
+log_level 'warn';
 no_long_string();
 no_shuffle();
 check_accum_error_log();
@@ -44,6 +45,7 @@ run_tests();
 __DATA__
 
 === TEST 1: sign() returns a 64-byte deterministic signature
+--- timeout: 60
 --- server_config
         content_by_lua_block {
             local ed = require "resty.mysql.auth_ed25519"
@@ -63,6 +65,7 @@ deterministic=true
 
 
 === TEST 2: sign() known vector (regression guard)
+--- timeout: 60
 --- server_config
         content_by_lua_block {
             local ed = require "resty.mysql.auth_ed25519"
@@ -80,6 +83,7 @@ prefix=6f25ecb9d36d417d
 
 
 === TEST 3: sign() varies with scramble and password
+--- timeout: 60
 --- server_config
         content_by_lua_block {
             local ed = require "resty.mysql.auth_ed25519"
@@ -100,6 +104,7 @@ password_diff=true
 
 
 === TEST 4: sign() handles empty / long / binary passwords
+--- timeout: 60
 --- server_config
         content_by_lua_block {
             local ed = require "resty.mysql.auth_ed25519"
@@ -119,11 +124,12 @@ password_diff=true
 
 
 === TEST 5: connect with correct ed25519 password
+--- timeout: 60
 --- server_config
         content_by_lua_block {
             local mysql = require "resty.mysql"
             local db = mysql:new()
-            db:set_timeout(2000)
+            db:set_timeout(10000)
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
                 port = $TEST_NGINX_MYSQL_PORT,
@@ -147,11 +153,12 @@ user=ed25519_user@%
 
 
 === TEST 6: wrong ed25519 password is rejected
+--- timeout: 60
 --- server_config
         content_by_lua_block {
             local mysql = require "resty.mysql"
             local db = mysql:new()
-            db:set_timeout(2000)
+            db:set_timeout(10000)
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
                 port = $TEST_NGINX_MYSQL_PORT,
@@ -174,11 +181,12 @@ rejected errno=1045 sqlstate=28000
 
 
 === TEST 7: ed25519 user with empty password connects
+--- timeout: 60
 --- server_config
         content_by_lua_block {
             local mysql = require "resty.mysql"
             local db = mysql:new()
-            db:set_timeout(2000)
+            db:set_timeout(10000)
             local ok, err, errno, sqlstate = db:connect({
                 host = "$TEST_NGINX_MYSQL_HOST",
                 port = $TEST_NGINX_MYSQL_PORT,
@@ -202,12 +210,13 @@ user=ed25519_nopass@%
 
 
 === TEST 8: repeated connections use fresh scrambles
+--- timeout: 60
 --- server_config
         content_by_lua_block {
             local mysql = require "resty.mysql"
             for i = 1, 3 do
                 local db = mysql:new()
-                db:set_timeout(2000)
+                db:set_timeout(10000)
                 local ok, err = db:connect({
                     host = "$TEST_NGINX_MYSQL_HOST",
                     port = $TEST_NGINX_MYSQL_PORT,

@@ -6,7 +6,7 @@ repeat_each(5);
 
 plan tests => repeat_each() * (2 * blocks());
 
-#log_level 'warn';
+log_level 'warn';
 
 no_long_string();
 no_shuffle();
@@ -25,7 +25,7 @@ local mysql = require "resty.mysql"
 
 function _M.prepare()
     local db = mysql:new()
-    db:set_timeout(2000) -- 2 sec
+    db:set_timeout(10000) -- 10 sec; DDL under valgrind+mockeagain exceeds 2s
 
     local ok, err, errno, sqlstate = db:connect({
         host = "$TEST_NGINX_MYSQL_HOST",
@@ -41,23 +41,24 @@ function _M.prepare()
 
     ngx.say("connected to mysql.")
 
-    local res, err, errno, sqlstate = db:query("drop table if exists cats")
+    -- Idempotent fixture: create the table and seed rows only once.
+    -- Under valgrind+mockeagain `repeat_each(N)` requests overlap, so a
+    -- drop-then-create here would race against in-flight selects from a
+    -- previous request and trigger spurious "table doesn't exist" errors.
+    local res, err, errno, sqlstate = db:query(
+        "create table if not exists cats "
+        .. "(id serial primary key, name varchar(5))")
     if not res then
         ngx.log(ngx.ERR, "bad result: ", err, ": ", errno, ": ", sqlstate, ".")
         return
     end
 
-    ngx.say("table cats dropped.")
+    ngx.say("table cats ready.")
 
-    res, err, errno, sqlstate = db:query("create table cats (id serial primary key, name varchar(5))")
-    if not res then
-        ngx.log(ngx.ERR, "bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-        return
-    end
-
-    ngx.say("table cats created.")
-
-    res, err, errno, sqlstate = db:query("insert into cats (name) value (\'Bob\'),(\'\'),(null)")
+    res, err, errno, sqlstate = db:query(
+        "insert into cats (name) "
+        .. "select * from (select \'Bob\' union all select \'\' union all select null) s "
+        .. "where not exists (select 1 from cats)")
     if not res then
         ngx.log(ngx.ERR, "bad result: ", err, ": ", errno, ": ", sqlstate, ".")
         return
@@ -74,7 +75,7 @@ end
 
 function _M.run(user, password, ssl)
     local db = mysql:new()
-    db:set_timeout(2000) -- 2 sec
+    db:set_timeout(10000) -- 10 sec; queries under valgrind+mockeagain exceed 2s
 
     local ok, err, errno, sqlstate = db:connect({
         host = "$TEST_NGINX_MYSQL_HOST",
@@ -127,6 +128,7 @@ run_tests();
 __DATA__
 
 === TEST 1: test different auth plugin
+--- timeout: 60
 --- main_config
     env DB_VERSION;
 --- server_config
