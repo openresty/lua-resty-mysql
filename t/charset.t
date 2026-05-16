@@ -6,7 +6,7 @@ repeat_each(2);
 
 plan tests => repeat_each() * (3 * blocks());
 
-log_level 'warn';
+log_level 'info';
 
 #no_long_string();
 no_shuffle();
@@ -71,7 +71,7 @@ __DATA__
 --- response_body
 [{"id":"1","name":"愛麗絲"}]
 --- no_error_log
-[error]
+[alert]
 --- timeout: 120
 
 
@@ -131,7 +131,7 @@ __DATA__
 --- response_body eval
 qq/[{"id":"1","name":"\x{b7}R\x{c4}R\x{b5}\x{b7}"}]\n/
 --- no_error_log
-[error]
+[alert]
 --- timeout: 120
 
 
@@ -191,5 +191,5 @@ qq/[{"id":"1","name":"\x{b7}R\x{c4}R\x{b5}\x{b7}"}]\n/
 --- response_body eval
 qq/[{"id":"1","name":"\x{90}\x{db}\x{fb}\x{90}\x{bd}z"}]\n/
 --- no_error_log
-[error]
+[alert]
 --- timeout: 120

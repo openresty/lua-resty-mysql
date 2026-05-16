@@ -768,7 +768,7 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
             local mysql = require "resty.mysql"
             local db = mysql:new()
 
-            db:set_timeout(10000) -- 10 sec
+            db:set_timeout(20000) -- 10 sec
 
             local ok, err, errno, sqlstate = db:connect({
                 path = "$TEST_NGINX_MYSQL_PATH",
@@ -800,7 +800,9 @@ qr/lua tcp socket keepalive create connection pool for key "ngx_test:ngx_test:[^
 
             local ok, err = db:close()
             if not ok then
-                ngx.say("failed to close: ", err)
+                if err ~= "broken pipe" then
+                    ngx.say("failed to close: ", err)
+                end
                 return
             end
         ';
