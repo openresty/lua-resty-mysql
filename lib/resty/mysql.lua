@@ -903,7 +903,13 @@ local function _encrypt_password(self, auth_data, public_key)
     local bytes = new_tab(n, 0)
 
     for i = 1, n do
-        local j = i % l
+        -- XOR the (null-terminated) password with the scramble, repeating the
+        -- scramble cyclically. Using 1-based indexing, byte i of the password
+        -- pairs with scramble byte ((i - 1) % l) + 1. The naive "i % l" yields
+        -- 0 at every multiple of l, which makes strbyte() return nil and aborts
+        -- the whole request for passwords whose length reaches the scramble
+        -- length (20 bytes).
+        local j = (i - 1) % l + 1
         bytes[i] = strchar(bxor(strbyte(password, i), strbyte(auth_data, j)))
     end
 
@@ -928,6 +934,9 @@ end
 
 local function _write_encode_password(self, auth_data, public_key)
     local enc, err = _encrypt_password(self, auth_data, public_key)
+    if not enc then
+        return "failed to encrypt password: " .. err
+    end
 
     local bytes, err = _send_packet(self, enc, #enc)
     if not bytes then
