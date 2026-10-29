@@ -809,7 +809,7 @@ local function _write_hand_shake_response(self, auth_resp, plugin)
 
         local sock = self.sock
 
-        local ok, err = sock:sslhandshake(false, nil, self.ssl_verify)
+        local ok, err = sock:sslhandshake(false, self.ssl_server_name, self.ssl_verify)
         if not ok then
             return "failed to do ssl handshake: " .. (err or "")
         end
@@ -1187,6 +1187,7 @@ function _M.connect(self, opts)
     self.password = opts.password or ""
 
     local host = opts.host
+    self.ssl_server_name = opts.server_name or host
     if host then
         local port = opts.port or 3306
         if not pool then
